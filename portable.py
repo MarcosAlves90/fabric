@@ -1,4 +1,4 @@
-"""Portable Bot templates (.botforge.json): what gets shared, what never does, and the secret scan.
+"""Portable Fabric templates (.fabric.json): what gets shared, what never does, and the secret scan.
 
 A template carries the Bot's design — persona, its own memory, tools, skill choices, taught skills, routines,
 face. It never carries chat history, work journals, facts about the user (USER.md), credentials, logs or caches. Every
@@ -15,7 +15,8 @@ else:
     import forge
     import policy
 
-FORMAT = "bot-forge/template"
+FORMAT = "fabric/template"
+LEGACY_FORMATS = ("bot-forge/template",)
 VERSION = 1
 MAX_TEMPLATE_BYTES = 512_000
 
@@ -107,8 +108,8 @@ def load_template(path: Path) -> dict:
     if path.stat().st_size > MAX_TEMPLATE_BYTES:
         raise ValueError(f"template is larger than {MAX_TEMPLATE_BYTES // 1000} KB")
     data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or data.get("format") != FORMAT:
-        raise ValueError("not a bot-forge template (missing format: bot-forge/template)")
+    if not isinstance(data, dict) or data.get("format") not in (FORMAT, *LEGACY_FORMATS):
+        raise ValueError("not a Fabric template (missing format: fabric/template)")
     if int(data.get("version", 0)) > VERSION:
         raise ValueError(f"template version {data['version']} is newer than this plugin understands")
     return data
@@ -117,4 +118,5 @@ def load_template(path: Path) -> dict:
 def bundled_templates() -> dict:
     """name -> path for the starter templates shipped with the plugin."""
     folder = Path(__file__).resolve().parent / "templates"
-    return {p.name.replace(".botforge.json", ""): p for p in sorted(folder.glob("*.botforge.json"))}
+    paths = sorted((*folder.glob("*.fabric.json"), *folder.glob("*.botforge.json")))
+    return {p.name.removesuffix(".fabric.json").removesuffix(".botforge.json"): p for p in paths}

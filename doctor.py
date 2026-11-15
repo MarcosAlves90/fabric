@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""`hermes bot-forge doctor` — is this install actually going to work?
+"""`hermes fabric doctor` — is this install actually going to work?
 
-Bot Forge is opt-in per profile and its tools only appear after the gateway restarts. Get either
+Fabric is opt-in per profile and its tools only appear after the gateway restarts. Get either
 step wrong and nothing errors: the agent simply never mentions the tools. This checks both, plus the
 things that decide whether a new Bot can answer at all (model sign-in, sandbox backends), and prints
 the exact next command. Read-only: it never changes a profile.
@@ -75,8 +75,9 @@ def _gateway_pids(root: Path) -> dict:
 
 
 def installed_dir(root: Path, profile: str, pdir: Path) -> Path:
-    """Where this profile loads Bot Forge from — the installed copy, not this source checkout."""
-    for candidate in (pdir / "plugins" / "bot-forge", root / "plugins" / "bot-forge"):
+    """Where this profile loads Fabric from — the installed copy, not this source checkout."""
+    for candidate in (pdir / "plugins" / "fabric", root / "plugins" / "fabric",
+                      pdir / "plugins" / "bot-forge", root / "plugins" / "bot-forge"):
         if (candidate / "plugin.yaml").exists():
             return candidate.resolve()
     return PLUGIN_DIR
@@ -138,7 +139,8 @@ def check(root: Path | None = None, settings: dict | None = None) -> dict:
     enabled, missing = [], []
     for name, pdir in _profiles(root):
         cfg = forge.load_yaml(pdir / "config.yaml")
-        (enabled if "bot-forge" in ((cfg.get("plugins") or {}).get("enabled") or []) else missing).append((name, pdir))
+        plugin_ids = set((cfg.get("plugins") or {}).get("enabled") or [])
+        (enabled if plugin_ids.intersection({"fabric", "bot-forge"}) else missing).append((name, pdir))
 
     if enabled:
         checks.append({"check": "enabled", "status": OK,
@@ -146,10 +148,10 @@ def check(root: Path | None = None, settings: dict | None = None) -> dict:
     else:
         checks.append({"check": "enabled", "status": FAIL,
                        "detail": "not enabled on any profile — an agent cannot see the tools"})
-        steps.append("hermes plugins enable bot-forge   # and `hermes -p <bot> plugins enable bot-forge` per Bot")
+        steps.append("hermes plugins enable fabric   # and `hermes -p <bot> plugins enable fabric` per Bot")
     if missing and enabled:
         checks.append({"check": "other profiles", "status": OK,
-                       "detail": "no Bot Forge on " + ", ".join(n for n, _ in missing)
+                       "detail": "no Fabric on " + ", ".join(n for n, _ in missing)
                                  + " (fine — enable it only where you chat)"})
 
     # a gateway started before the plugin files changed is still serving the old code
@@ -192,8 +194,8 @@ def check(root: Path | None = None, settings: dict | None = None) -> dict:
     for name, pdir in enabled or _profiles(root)[:1]:
         model = (forge.load_yaml(pdir / "config.yaml").get("model") or {})
         provider, model_id = model.get("provider", ""), model.get("default", "")
-        profile_settings = (((forge.load_yaml(pdir / "config.yaml").get("plugins") or {}).get("entries") or {})
-                    .get("bot-forge") or {}).get("settings") or {}
+        entries = (forge.load_yaml(pdir / "config.yaml").get("plugins") or {}).get("entries") or {}
+        profile_settings = ((entries.get("fabric") or entries.get("bot-forge") or {}).get("settings") or {})
         has_fallback = bool(profile_settings.get("fallback_model") or profile_settings.get("probe_local_models"))
         if provider in OAUTH_PROVIDERS and not has_fallback:
             checks.append({"check": f"model ({name})", "status": WARN,
@@ -291,7 +293,7 @@ def check(root: Path | None = None, settings: dict | None = None) -> dict:
         checks.append({"check": "version", "status": WARN,
                        "detail": "profiles run different versions: "
                                  + ", ".join(f"{n} {v}" for n, v in versions.items())
-                                 + " — `hermes -p <name> plugins update bot-forge`"})
+                                 + " — `hermes -p <name> plugins update fabric`"})
     elif versions:
         checks.append({"check": "version", "status": OK, "detail": next(iter(versions.values()))})
 
@@ -299,16 +301,16 @@ def check(root: Path | None = None, settings: dict | None = None) -> dict:
         WARN if any(c["status"] == WARN for c in checks) else OK)
     return {"ok": worst != FAIL, "status": worst, "root": str(root), "checks": checks,
             "next_steps": steps,
-            "summary": {OK: "Bot Forge is ready — ask a Bot to make you a Bot",
-                        WARN: "Bot Forge works, but read the warnings",
-                        FAIL: "Bot Forge will not be visible to your agents yet"}[worst]}
+            "summary": {OK: "Fabric is ready — ask a Bot to make you a Bot",
+                        WARN: "Fabric works, but read the warnings",
+                        FAIL: "Fabric will not be visible to your agents yet"}[worst]}
 
 
 ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
 
 
 def render(result: dict) -> str:
-    lines = [f"Bot Forge doctor — {result['root']}", ""]
+    lines = [f"Fabric doctor — {result['root']}", ""]
     for c in result["checks"]:
         lines.append(f"  {ICON[c['status']]} {c['check']:22} {c['detail']}")
     lines += ["", f"  {result['summary']}"]

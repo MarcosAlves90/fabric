@@ -516,7 +516,8 @@ class AdvisoryGuidance(unittest.TestCase):
             self.assertNotIn("do not ask the user questions first", text)
 
     def test_skill_has_no_forced_creation_or_fixed_team_headcount(self):
-        text = (ROOT / "skills" / "bot-forge" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "skills" / "fabric" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("# Fabric", text)
         self.assertNotIn("**Zero questions.**", text)
         self.assertNotIn("plus 2-4 specialists", text)
         self.assertIn("Only justified, authorized NEW profiles", text)

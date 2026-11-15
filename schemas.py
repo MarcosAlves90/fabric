@@ -31,7 +31,7 @@ CREATE_AGENT = {
         "prefer reuse, a skill, temporary delegation, or a routine on an existing owner when sufficient. "
         "A new profile is for a justified persistent responsibility, state or configuration difference, "
         "not every specialty. Explicit authorized Bot/profile creation stays direct; ask only about "
-        "material ambiguity or missing authority. Apply the bundled skill 'bot-forge:bot-forge'. "
+        "material ambiguity or missing authority. Apply the bundled skill 'fabric:fabric'. "
         "Write a job-specific SOUL.md in soul_md and use template when helpful. The tool provisions "
         "identity, memory, tools, skills and optional routines, tries a Bot Chat introduction, and "
         "handles the existing gateway topology without forcing a separate service. Creation failures "
@@ -93,7 +93,7 @@ CREATE_AGENT = {
             "inherit_plugins": {"type": "array", "items": {"type": "string"}, "description": (
                 "plugins installed on the user's main profile to copy into this Bot, by name (e.g. a persona or "
                 "style plugin the user wants every Bot to have), or ['all'] for every plugin enabled there. Off "
-                "by default: a Bot gets only the plugins it was asked for. Bot Forge itself is never copied, and "
+                "by default: a Bot gets only the plugins it was asked for. Fabric itself is never copied, and "
                 "no credentials travel with a plugin. Only pass it when the user asked for a plugin in the Bot.")},
             "routines": {
                 "type": "array",
@@ -257,7 +257,7 @@ UPDATE_AGENT = {
             "inherit_plugins": {"type": "array", "items": {"type": "string"}, "description": (
                 "copy these plugins from the user's main profile into this Bot and enable them (['all'] for every "
                 "one enabled there) — the fix when check_agents flags plugins as enabled but not installed. "
-                "Bot Forge itself and credentials are never copied.")},
+                "Fabric itself and credentials are never copied.")},
             "model": {"type": "object", "description": "model block {default, provider, base_url} — only when asked"},
             "add_routines": {"type": "array", "items": {
                 "type": "object",
@@ -374,7 +374,7 @@ CREATE_TEAM = {
         "reuse an existing Bot, a skill, temporary delegation or a routine when sufficient. "
         "A request for a team does not imply a new profile for every specialty or a fixed team size. "
         "Use lead_name for an existing lead; put only justified NEW profiles in members. "
-        "Explicit authorized profile creation stays direct. Apply skill 'bot-forge:bot-forge'. "
+        "Explicit authorized profile creation stays direct. Apply skill 'fabric:fabric'. "
         "Each new lead/member may have an explicit model route; omission preserves inheritance. "
         "Up to 6 members are built one at a time; failure cleanup is per Bot, not a team transaction. "
         "Report each member's warning and gateway status. Takes several minutes; say so before calling."
@@ -454,7 +454,7 @@ TEACH_AGENT = {
 CHECK_POLICIES = {
     "name": "check_policies",
     "description": (
-        "Check whether each Bot's shared operating policy is current — read-only. Bot Forge writes the "
+        "Check whether each Bot's shared operating policy is current — read-only. Fabric writes the "
         "canonical policy to ~/.hermes/shared/BOT-POLICY.md and inlines it into every Bot's SOUL.md, so a rule "
         "you edit once applies everywhere on the next build. Returns each Bot's fingerprint, which Bots are "
         "stale (built before your latest edit), and which have no shared policy at all. Use after editing the "
@@ -496,7 +496,7 @@ CHECK_AGENTS = {
 CHECK_INSTALL = {
     "name": "check_install",
     "description": (
-        "Check whether Bot Forge itself is set up correctly on this machine — read-only. Reports which profiles "
+        "Check whether Fabric itself is set up correctly on this machine — read-only. Reports which profiles "
         "have it enabled, whether each gateway is running the current plugin code (if not, its tools are invisible "
         "and a restart is needed), whether Desktop Bot Mode was detected, whether a new Bot's inherited model can "
         "sign in, which sandbox backends are usable, and the bundled templates. Use when the user says the tools "
@@ -510,7 +510,7 @@ CHECK_INSTALL = {
 AGENT_JOURNAL = {
     "name": "agent_journal",
     "description": (
-        "Maintain a Bot's append-only work journal. New Bot Forge Bots have journaling enabled by default. "
+        "Maintain a Bot's append-only work journal. New Fabric Bots have journaling enabled by default. "
         "Use action='add' after meaningful work to record observable outcomes, evidence, blockers and next steps; "
         "skip routine conversation. Use action='read' when the user asks what a Bot has done, or action='enable' "
         "once for an older Bot. When called inside a Bot's own chat, `name` can be omitted; otherwise pass a Bot "

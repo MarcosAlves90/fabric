@@ -160,9 +160,9 @@ class PlatformClaimsMatchWhatIsTested(unittest.TestCase):
 
     def test_the_skill_claims_no_platform_ci_does_not_run(self):
         import re
-        skill = (ROOT / "skills" / "bot-forge" / "SKILL.md").read_text(encoding="utf-8")
+        skill = (ROOT / "skills" / "fabric" / "SKILL.md").read_text(encoding="utf-8")
         match = re.search(r"^platforms:\s*\[([^\]]*)\]", skill, re.MULTILINE)
-        self.assertIsNotNone(match, "skills/bot-forge/SKILL.md declares no platforms")
+        self.assertIsNotNone(match, "skills/fabric/SKILL.md declares no platforms")
         claimed = {p.strip() for p in match.group(1).split(",") if p.strip()}
         unproven = claimed - self.platforms_ci_runs_the_suite_on()
         self.assertEqual(

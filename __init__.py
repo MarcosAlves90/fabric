@@ -1,8 +1,35 @@
-"""bot-forge — let a Hermes agent spawn, list and ask other Hermes Bots."""
+"""Fabric — let a Hermes agent spawn, list and ask other Hermes Bots."""
 
+import os
 from pathlib import Path
 
 from . import schemas, tools
+
+
+def _legacy_settings():
+    """Read only legacy plugin settings from the active profile's YAML config."""
+    from . import forge
+    root = forge.default_root()
+    profile = (os.environ.get("HERMES_PROFILE") or os.environ.get("HERMES_PROFILE_ID")
+               or os.environ.get("HERMES_SESSION_PROFILE"))
+    if profile and (Path(profile).name != profile or profile in {".", ".."}):
+        profile = None
+    path = root / "profiles" / profile / "config.yaml" if profile else root / "config.yaml"
+    cfg = forge.load_yaml(path)
+    plugins = cfg.get("plugins")
+    if not isinstance(plugins, dict):
+        plugins = {}
+    entries = plugins.get("entries")
+    if not isinstance(entries, dict):
+        entries = {}
+    legacy = entries.get("bot-forge") or {}
+    current = entries.get("fabric") or {}
+    legacy = legacy.get("settings") if isinstance(legacy, dict) else {}
+    current = current.get("settings") if isinstance(current, dict) else {}
+    merged = {key: legacy[key] for key in _SETTINGS if isinstance(legacy, dict) and key in legacy}
+    if isinstance(current, dict):
+        merged.update({key: current[key] for key in _SETTINGS if key in current})
+    return merged
 
 _SETTINGS = ("inherit_model", "fallback_model", "probe_local_models", "install_gateway",
              "allow_delete", "backup_before_delete", "suggest_connectors", "allow_secrets",
@@ -12,37 +39,39 @@ _SETTINGS = ("inherit_model", "fallback_model", "probe_local_models", "install_g
 
 def register(ctx):
     def settings():
-        return {key: ctx.get_config(key, default=None) for key in _SETTINGS}
+        legacy = _legacy_settings()
+        current = {key: ctx.get_config(key, default=None) for key in _SETTINGS}
+        return {key: current[key] if current[key] is not None else legacy.get(key) for key in _SETTINGS}
 
-    ctx.register_tool(name="create_agent", toolset="bot_forge", schema=schemas.CREATE_AGENT,
+    ctx.register_tool(name="create_agent", toolset="fabric", schema=schemas.CREATE_AGENT,
                       handler=lambda args, **kw: tools.create_agent(args, settings=settings(), **kw),
                       emoji="🧪", description="Spawn a complete, working Hermes Bot from a design")
-    ctx.register_tool(name="list_agents", toolset="bot_forge", schema=schemas.LIST_AGENTS,
+    ctx.register_tool(name="list_agents", toolset="fabric", schema=schemas.LIST_AGENTS,
                       handler=tools.list_agents, emoji="📋", description="List Hermes Bots on this machine")
-    ctx.register_tool(name="check_install", toolset="bot_forge", schema=schemas.CHECK_INSTALL,
+    ctx.register_tool(name="check_install", toolset="fabric", schema=schemas.CHECK_INSTALL,
                       handler=lambda args, **kw: tools.check_install(args, settings=settings(), **kw), emoji="🩹",
-                      description="Check that Bot Forge itself is set up correctly (read-only)")
-    ctx.register_tool(name="check_agents", toolset="bot_forge", schema=schemas.CHECK_AGENTS,
+                      description="Check that Fabric itself is set up correctly (read-only)")
+    ctx.register_tool(name="check_agents", toolset="fabric", schema=schemas.CHECK_AGENTS,
                       handler=tools.check_agents, emoji="🩺", description="Health check for all Bots (read-only)")
-    ctx.register_tool(name="check_policies", toolset="bot_forge", schema=schemas.CHECK_POLICIES,
+    ctx.register_tool(name="check_policies", toolset="fabric", schema=schemas.CHECK_POLICIES,
                       handler=tools.check_policies, emoji="📜",
                       description="Report shared-policy drift across Bots (read-only)")
-    ctx.register_tool(name="agent_journal", toolset="bot_forge", schema=schemas.AGENT_JOURNAL,
+    ctx.register_tool(name="agent_journal", toolset="fabric", schema=schemas.AGENT_JOURNAL,
                       handler=lambda args, **kw: tools.agent_journal(args, settings=settings(), **kw),
                       emoji="📓",
                       description="Enable, write, or read a Bot's factual work journal")
-    ctx.register_tool(name="ask_agent", toolset="bot_forge", schema=schemas.ASK_AGENT,
+    ctx.register_tool(name="ask_agent", toolset="fabric", schema=schemas.ASK_AGENT,
                       handler=tools.ask_agent, emoji="📨",
                       description="Ask another Hermes Bot something and return its reply")
-    ctx.register_tool(name="request_takeover", toolset="bot_forge", schema=schemas.REQUEST_TAKEOVER,
+    ctx.register_tool(name="request_takeover", toolset="fabric", schema=schemas.REQUEST_TAKEOVER,
                       handler=lambda args, **kw: tools.request_takeover(args, settings=settings(), **kw),
                       emoji="🙋",
                       description="Ask the user to take this Bot's screen for a sign-in it cannot pass")
-    ctx.register_tool(name="delegate_outside", toolset="bot_forge", schema=schemas.DELEGATE_OUTSIDE,
+    ctx.register_tool(name="delegate_outside", toolset="fabric", schema=schemas.DELEGATE_OUTSIDE,
                       handler=lambda args, **kw: tools.delegate_outside(args, settings=settings(), **kw),
                       emoji="🛫",
                       description="Hand a coding job to Claude Code — outside Hermes, outside Sentinel")
-    ctx.register_tool(name="handoff_agent", toolset="bot_forge", schema=schemas.HANDOFF_AGENT,
+    ctx.register_tool(name="handoff_agent", toolset="fabric", schema=schemas.HANDOFF_AGENT,
                       handler=lambda args, **kw: tools.handoff_agent(args, settings=settings(), **kw),
                       emoji="🤝",
                       description="Hand a task, with context, to another Bot that then owns it")
@@ -57,7 +86,7 @@ def register(ctx):
         ("hide_agent", schemas.HIDE_AGENT, tools.hide_agent, "🙈", "Hide or unhide a Bot in the roster"),
         ("delete_agent", schemas.DELETE_AGENT, tools.delete_agent, "🗑️", "Delete a Bot (off unless enabled)"),
     ):
-        ctx.register_tool(name=name, toolset="bot_forge", schema=schema,
+        ctx.register_tool(name=name, toolset="fabric", schema=schema,
                           handler=(lambda h: lambda args, **kw: h(args, settings=settings(), **kw))(handler),
                           emoji=emoji, description=blurb)
 
@@ -75,9 +104,9 @@ def register(ctx):
     # `python doctor.py` still work. Asked rather than wrapped in `except Exception`, which
     # also swallowed real breakage in our own registration — twice.
     if hasattr(ctx, "register_cli_command"):
-        ctx.register_cli_command(name="bot-forge-doctor", help="Check that Bot Forge is set up correctly",
+        ctx.register_cli_command(name="fabric-doctor", help="Check that Fabric is set up correctly",
                                  setup_fn=_doctor_setup, handler_fn=_doctor_handler,
-                                 description="Report which profiles have Bot Forge enabled, whether their gateways "
+                                 description="Report which profiles have Fabric enabled, whether their gateways "
                                              "run the current code, model sign-in, sandbox backends and templates.")
 
     # Put the acknowledgement on the user's own message in Desktop, without relying on the model —

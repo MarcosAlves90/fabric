@@ -56,6 +56,26 @@ class CompanionInstall(unittest.TestCase):
             enabled = yaml.safe_load((d / "config.yaml").read_text(encoding="utf-8"))["plugins"]["enabled"]
             self.assertEqual(enabled.count(companion.MARKS_NAME), 1)
 
+    def test_legacy_companion_install_and_enabled_id_remain_readable(self):
+        import companion
+        with tempfile.TemporaryDirectory() as t:
+            d = self._bot(make_root(Path(t)))
+            legacy = d / "plugins" / companion.LEGACY_MARKS_NAME
+            legacy.mkdir(parents=True)
+            (legacy / "plugin.yaml").write_text(
+                f"name: {companion.LEGACY_MARKS_NAME}\nversion: {companion.marks_version()}\n",
+                encoding="utf-8")
+            cfg = yaml.safe_load((d / "config.yaml").read_text(encoding="utf-8"))
+            cfg["plugins"] = {"enabled": [companion.LEGACY_MARKS_NAME]}
+            forge.dump_yaml(d / "config.yaml", cfg)
+            self.assertTrue(companion.marks_ready(d))
+            self.assertEqual(companion.installed_version(d), companion.marks_version())
+            result = companion.install_marks(d)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["name"], companion.LEGACY_MARKS_NAME)
+            self.assertFalse((d / "plugins" / companion.MARKS_NAME).exists())
+            self.assertTrue((legacy / "plugin.yaml").exists())
+
     def test_an_older_copy_is_replaced(self):
         import companion
         with tempfile.TemporaryDirectory() as t:
@@ -394,7 +414,7 @@ class InheritedPlugins(unittest.TestCase):
             # Both companions ship with every Bot — the reaction hook and the policy layer.
             # Neither is an "inherited" plugin, which is what this test is about.
             self.assertEqual(sorted(p.name for p in (root / "profiles" / "marlow" / "plugins").iterdir()),
-                             ["bot-forge-marks", "bot-forge-sentinel"])
+                             ["fabric-marks", "fabric-sentinel"])
 
     def test_create_agent_inherits_by_setting_or_by_argument(self):
         from unittest import mock
@@ -414,7 +434,7 @@ class InheritedPlugins(unittest.TestCase):
             self.assertFalse((pdir / "plugins" / "forge-checkout").exists())
             enabled = yaml.safe_load((pdir / "config.yaml").read_text(encoding="utf-8"))["plugins"]["enabled"]
             self.assertEqual(enabled.count("style"), 1)
-            self.assertEqual(enabled.count("bot-forge-marks"), 1)
+            self.assertEqual(enabled.count("fabric-marks"), 1)
         with tempfile.TemporaryDirectory() as t:  # the call's own argument wins over the setting
             root = self._root(t)
             spec = self._spec(root, display_name="Vesper", inherit_plugins=["orchestrator"])

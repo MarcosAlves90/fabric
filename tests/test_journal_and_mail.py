@@ -37,6 +37,22 @@ class Journal(unittest.TestCase):
             self.assertIn("You are **Quill**", soul)
             self.assertTrue((pdir / "journal" / "README.md").exists())
 
+    def test_legacy_marker_is_read_and_upgraded_once(self):
+        legacy = "<!-- bot-forge-journal:v1 -->"
+        with tempfile.TemporaryDirectory() as t:
+            pdir = self._bot(make_root(Path(t)))
+            authored = "Keep this exact user-authored instruction."
+            soul = pdir / "SOUL.md"
+            soul.write_text(f"{authored}\n\n{legacy}\n## Work journal\n- record work\n", encoding="utf-8")
+            self.assertTrue(journal.journaling_enabled(pdir))
+            first = journal.enable_journal(pdir)
+            text = soul.read_text(encoding="utf-8")
+            self.assertTrue(first["changed"])
+            self.assertIn(journal.JOURNAL_MARKER, text)
+            self.assertNotIn(legacy, text)
+            self.assertIn(authored, text)
+            self.assertFalse(journal.enable_journal(pdir)["changed"])
+
     def test_add_and_read_factual_entry(self):
         from datetime import datetime
 
@@ -238,6 +254,19 @@ class OutboundMail(unittest.TestCase):
                  "EMAIL_PASSWORD": "hunter2", **env}
         (root / ".env").write_text("\n".join(f"{k}={v}" for k, v in lines.items() if v) + "\n", encoding="utf-8")
         return root
+
+    def test_legacy_rate_state_is_read_but_new_records_use_fabric_path(self):
+        import notify
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp))
+            old = root / ".bot-forge" / "notify.json"
+            old.parent.mkdir()
+            old.write_text(json.dumps({"marlow": [99, 100]}), encoding="utf-8")
+            self.assertFalse(notify._rate_ok(root, "marlow", 101, limit=2))
+            notify._record(root, "marlow", 101)
+            self.assertTrue(notify._state_file(root).is_file())
+            self.assertTrue(old.is_file(), "compatibility reads must not migrate/delete legacy data")
+            self.assertEqual(notify._load_state(root)["marlow"], [99, 100, 101])
 
     def _bot(self, root, name="marlow", title="Marlow"):
         d = root / "profiles" / name
@@ -490,6 +519,21 @@ class ScheduledDigest(unittest.TestCase):
         self.assertIn(notify.SCRIPT_NAME, seen["args"])
         self.assertEqual(out["profile"], "ceo")
         self.assertIn("no email setup needed", out["delivery"])
+        self.assertEqual(out["job"], notify.JOB_NAME)
+        self.assertEqual(Path(out["script"]).name, notify.SCRIPT_NAME)
+
+    def test_existing_legacy_digest_job_is_not_duplicated(self):
+        import notify
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp), profiles=("ceo",))
+            jobs = root / "profiles" / "ceo" / "cron" / "jobs.json"
+            jobs.parent.mkdir()
+            jobs.write_text(json.dumps({"jobs": [{"name": "bot-forge-digest", "schedule": "0 8 * * *",
+                                                   "script": "bot-forge-digest.py"}]}), encoding="utf-8")
+            out = notify.schedule(root, profile="ceo", runner=lambda args: self.fail("must not create duplicate"))
+            self.assertTrue(out["ok"], out)
+            self.assertTrue(out["existing"])
+            self.assertEqual(out["job"], "bot-forge-digest")
 
     def test_a_refusal_keeps_the_reason(self):
         import notify

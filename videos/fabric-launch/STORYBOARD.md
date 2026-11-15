@@ -48,14 +48,14 @@ asset_candidates: assets/icon.png — the mark, small, bottom-left, present but 
 - blueprint: transcript-scroll-artifact-reveal
 
 The proof beat, and the longest. The genuine page at
-hermes-agent.nousresearch.com/docs/plugins/bot-forge fills the square, cropped to its readable
+former Hermes catalog listing (historical attribution) fills the square, cropped to its readable
 column, and travels upward at a steady, readable pace — the hero banner, then the listing row,
 then what it adds. Nothing is rebuilt: this is the captured page.
 
 One cyan hairline ring draws itself around the `Community · v0.5.0 · ★ 29` row as it passes, holds
 while the eye lands, then releases. A mono caption sits in the lower band throughout:
-`hermes-agent.nousresearch.com/docs/plugins/bot-forge` — so a viewer who screenshots the frame
-still has the address.
+`former Hermes catalog listing (historical attribution)` — so a viewer who screenshots the frame
+still sees the historical attribution.
 
 Shot sequence
 - 0.0–0.5s — the page plate fades in from black already at its start position (top of the page).
@@ -87,9 +87,9 @@ the cyan ring released; the mono address caption at opacity 1 in the lower band.
 handoff_in: the page plate arrives at scale 1.0, opacity 1, still travelling upward at the same
 rate, then settles and dims back to 18% behind the command chip — no jump at the cut.
 
-The one thing a viewer might act on. The install command sits in a mono chip, centred, large:
+The one thing a viewer might act on. The former install command sits in a mono chip, centred, large:
 
-    hermes plugins install bot-forge
+    Fabric · not yet published
 
 The page continues behind it, heavily dimmed, so the command is clearly *from* that page. A single
 caret blinks once at the end of the line and stops — one blink, not a loop; it says "terminal"
@@ -98,7 +98,7 @@ without becoming an animation.
 Shot sequence
 - 0.0–0.5s — the inherited page settles from its travel and dims to 18% behind a near-black scrim.
 - 0.3–1.0s — the mono chip scales up from 0.96 with its 1px cyan-dim border, centred.
-- 0.5–1.2s — `hermes plugins install bot-forge` types on in one smooth reveal (a clip-path wipe,
+- 0.5–1.2s — `Fabric · not yet published` types on in one smooth reveal (a clip-path wipe,
   left to right — not a character-by-character stutter).
 - 1.2–1.5s — the caret blinks once at the end of the line, then stays off.
 - 1.5–3.5s — the chip holds dead still, long enough to read and screenshot.
@@ -117,14 +117,14 @@ asset_candidates: assets/catalog-page.png — the page hero, dimmed to a backdro
 - blueprint: logo-assemble-lockup
 
 The mark moves from the corner to centre and grows into the close — the same object the video
-opened with, now the subject. Under it: **Bot Forge**, then one mono line,
+opened with, now the subject. Under it: **Fabric**, then one mono line,
 `github.com/BkashJEE/hermes-bot-forge`, and a single cyan rule.
 
 No call to action beyond the address. The command was the ask; this is the signature.
 
 Shot sequence
 - 0.0–0.8s — the mark travels from the lower-left corner to centre and scales 96px → 220px.
-- 0.8–1.4s — "Bot Forge" fades up beneath it at display scale.
+- 0.8–1.4s — "Fabric" fades up beneath it at display scale.
 - 1.3–1.7s — a 2px cyan rule draws outward from centre to 200px wide.
 - 1.6–2.2s — `github.com/BkashJEE/hermes-bot-forge` fades up in mono under the rule.
 - 2.2–3.0s — the whole lockup holds; the last half second is still.

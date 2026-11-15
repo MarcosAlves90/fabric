@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from support import forge, make_root, manage, team, tools, yaml
+from support import forge, make_root, manage, portable, team, tools, yaml
 
 
 class AskAgentEnvironment(unittest.TestCase):
@@ -216,8 +216,10 @@ class Manage(unittest.TestCase):
                 self.assertFalse(out["ok"], bad)
                 self.assertIn("profile-exports", out["error"])
             self.assertIn("root-model", (root / "config.yaml").read_text(encoding="utf-8"))
-            out = manage.manage({**base, "path": "quill-copy.json"})
+            out = manage.manage({**base, "path": "quill-copy.fabric.json"})
             self.assertTrue(out["ok"])
+            self.assertTrue(Path(out["path"]).name.endswith(".fabric.json"))
+            self.assertEqual(portable.load_template(Path(out["path"]))["format"], "fabric/template")
             self.assertEqual(Path(out["path"]).parent, (root / "profile-exports").resolve())
             again = manage.manage({**base, "path": out["path"]})
             self.assertFalse(again["ok"])

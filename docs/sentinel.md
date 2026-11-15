@@ -43,14 +43,14 @@ Precedence is `block` > `approve` > none, **not registration order** — one plu
 beats another's request for confirmation. `modify` is processed before the gate, so a rewrite is
 visible even when a later hook blocks.
 
-Bot Forge registers `pre_llm_call` and `post_llm_call` today, for the acknowledgement tapback.
+Fabric registers `pre_llm_call` and `post_llm_call` today, for the acknowledgement tapback.
 It has never registered `pre_tool_call`. The enforcement point has been there the whole time.
 
 ## The design
 
 ### Shape: a companion plugin, like `marks/`
 
-`marks/` already ships a hooks-only plugin into every Bot profile Bot Forge manages — two hooks,
+`marks/` already ships a hooks-only plugin into every Bot profile Fabric manages — two hooks,
 no tools, installed into that profile's `config.yaml`, never the root profile. It is installed,
 debugged and running across every Bot on this machine.
 
@@ -64,6 +64,8 @@ debugged and running across every Bot on this machine.
 - **one `pre_tool_call` hook.**
 
 ### Policy lives in the Bot's own config
+
+`bot-forge-sentinel` remains the legacy config/plugin identifier for existing profiles; it is not the Fabric product name.
 
 Under the key Hermes reads — `plugins.entries.bot-forge-sentinel.settings`, the same key
 `companion.install_sentinel` writes. A top-level `bot-forge-sentinel:` key is **not** read by
@@ -95,7 +97,7 @@ model intended to ask.
 missing policy file is exactly when a Bot should do less, not more. The failure must be loud: the
 block message says the policy could not be read, so the user sees a refusal rather than silence.
 
-This is the one place where Bot Forge's usual "never let it stop the plugin loading" instinct is
+This is the one place where Fabric's usual "never let it stop the plugin loading" instinct is
 wrong. Adoption failing open is fine; enforcement failing open is not.
 
 ### What it is not

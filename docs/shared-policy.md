@@ -7,7 +7,7 @@ edit once reaches every Bot on the next build.
 ## Why not just symlink it
 
 The obvious design — and the one `steipete/agent-scripts` uses for Claude Code and Codex —
-is to symlink one canonical `AGENTS.MD` into each agent's expected filename. Bot Forge
+is to symlink one canonical `AGENTS.MD` into each agent's expected filename. Fabric
 borrows the *discipline* (one canonical file, change once) but not the mechanism, because two
 facts about Hermes make a symlink the wrong default here.
 

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 PROBE = ROOT / "tests" / "registration_probe.py"
@@ -28,10 +29,80 @@ def run_probe(repo: Path):
 
 
 class Registration(unittest.TestCase):
+    def test_legacy_settings_feed_runtime_and_fabric_settings_win(self):
+        import importlib.util
+        import support
+
+        package_name = "_registration_test_fabric"
+
+        def clear_package():
+            for name in tuple(sys.modules):
+                if name == package_name or name.startswith(package_name + "."):
+                    del sys.modules[name]
+
+        clear_package()
+        self.addCleanup(clear_package)
+        spec = importlib.util.spec_from_file_location(
+            package_name, ROOT / "__init__.py", submodule_search_locations=[str(ROOT)]
+        )
+        assert spec is not None and spec.loader is not None
+        plugin = importlib.util.module_from_spec(spec)
+        sys.modules[package_name] = plugin
+        spec.loader.exec_module(plugin)
+        companion = importlib.import_module(f"{package_name}.companion")
+        forge_module = importlib.import_module(f"{package_name}.forge")
+        tools_module = importlib.import_module(f"{package_name}.tools")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / ".hermes"
+            profile = root / "profiles" / "quill"
+            profile.mkdir(parents=True)
+            with (profile / "config.yaml").open("w", encoding="utf-8") as f:
+                support.yaml.safe_dump({"plugins": {"entries": {
+                    "bot-forge": {"settings": {"allow_delete": True, "EMAIL_PASSWORD": "must-not-read"}},
+                    "fabric": {"settings": {"allow_delete": False}}}}}, f)
+
+            class Context:
+                def __init__(self): self.handlers = {}
+                def get_config(self, key, default=None): return None
+                def register_tool(self, **kw): self.handlers[kw["name"]] = kw["handler"]
+                def register_hook(self, *args): pass
+                def register_skill(self, *args): pass
+                def register_cli_command(self, **kw): pass
+
+            ctx = Context()
+            with mock.patch.dict(os.environ, {"HERMES_PROFILE": "quill"}), \
+                 mock.patch.object(forge_module, "default_root", return_value=root), \
+                 mock.patch.object(companion, "adopt_all"), \
+                 mock.patch.object(companion, "companion_running", return_value=True), \
+                 mock.patch.object(tools_module, "create_agent", return_value={"ok": True}) as create:
+                plugin.register(ctx)
+                ctx.handlers["create_agent"]({})
+            settings = create.call_args.kwargs["settings"]
+            self.assertFalse(settings["allow_delete"])
+            self.assertNotIn("EMAIL_PASSWORD", settings)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / ".hermes"
+            profile = root / "profiles" / "quill"
+            profile.mkdir(parents=True)
+            with (profile / "config.yaml").open("w", encoding="utf-8") as f:
+                support.yaml.safe_dump({"plugins": {"entries": {
+                    "bot-forge": {"settings": {"allow_delete": True}}}}}, f)
+            with mock.patch.dict(os.environ, {"HERMES_PROFILE": "quill"}), \
+                 mock.patch.object(forge_module, "default_root", return_value=root), \
+                 mock.patch.object(companion, "adopt_all"), \
+                 mock.patch.object(companion, "companion_running", return_value=True), \
+                 mock.patch.object(tools_module, "create_agent", return_value={"ok": True}) as create:
+                ctx = Context()
+                plugin.register(ctx)
+                ctx.handlers["create_agent"]({})
+                self.assertTrue(create.call_args.kwargs["settings"]["allow_delete"])
+
     def test_manifest_matches_what_register_actually_registers(self):
         proc = run_probe(ROOT)
         self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
         self.assertIn("CLI command", proc.stdout)
+        self.assertNotIn("bot-forge-doctor", proc.stdout)
 
     def test_the_probe_notices_a_tool_that_stops_registering(self):
         """Guard the guard: a check that cannot fail is worse than no check.

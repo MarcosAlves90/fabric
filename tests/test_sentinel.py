@@ -179,11 +179,14 @@ class DirectiveShape(unittest.TestCase):
 
     def test_approve_keys_its_always_rule_to_the_tool(self):
         out = guard.decide("send_email", {})
-        self.assertEqual(out["rule_key"], "bot-forge-sentinel:send_email")
+        self.assertEqual(out["rule_key"], "fabric-sentinel:send_email")
 
     def test_always_allowing_one_tool_does_not_clear_its_whole_category(self):
         self.assertNotEqual(guard.decide("send_email", {})["rule_key"],
                             guard.decide("post_tweet", {})["rule_key"])
+
+    def test_legacy_user_allowlist_remains_authoritative(self):
+        self.assertIsNone(guard.decide("send_email", {"allow": ["bot-forge-sentinel:send_email"]}))
 
     def test_every_directive_uses_an_action_hermes_acts_on(self):
         seen = set()
@@ -351,14 +354,14 @@ class ShippedIntoEveryBot(unittest.TestCase):
         out = companion.install_sentinel(self.bot, support.forge.DEFAULT_APPROVALS)
         self.assertTrue(out["ok"], out)
         self.assertTrue(out["enforcing"])
-        self.assertEqual((self.bot / "plugins" / "bot-forge-sentinel" / "plugin.yaml").exists(), True)
+        self.assertEqual((self.bot / "plugins" / "fabric-sentinel" / "plugin.yaml").exists(), True)
 
     def test_the_policy_is_switched_on_in_that_bots_config(self):
         import companion
         companion.install_sentinel(self.bot, support.forge.DEFAULT_APPROVALS)
         cfg = support.yaml.safe_load((self.bot / "config.yaml").read_text(encoding="utf-8"))
-        self.assertIn("bot-forge-sentinel", cfg["plugins"]["enabled"])
-        self.assertTrue(core_get_config(cfg, "bot-forge-sentinel", "guard_defaults"))
+        self.assertIn("fabric-sentinel", cfg["plugins"]["enabled"])
+        self.assertTrue(core_get_config(cfg, "fabric-sentinel", "guard_defaults"))
 
     def test_a_bot_that_promised_nothing_is_not_given_rules_it_never_claimed(self):
         """Enforcing categories a Bot never declared would be us inventing its policy."""
@@ -382,8 +385,8 @@ class ShippedIntoEveryBot(unittest.TestCase):
         companion.install_sentinel(self.bot, support.forge.DEFAULT_APPROVALS)
 
         after = support.yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
-        self.assertEqual(core_get_config(after, "bot-forge-sentinel", "refuse"), ["delete_profile"])
-        self.assertEqual(core_get_config(after, "bot-forge-sentinel", "mode"), "ask")
+        self.assertEqual(core_get_config(after, "fabric-sentinel", "refuse"), ["delete_profile"])
+        self.assertEqual(core_get_config(after, "fabric-sentinel", "mode"), "ask")
 
     def test_the_policy_a_bot_gets_actually_governs_it(self):
         """End to end, through the path Hermes actually reads.
@@ -395,10 +398,32 @@ class ShippedIntoEveryBot(unittest.TestCase):
         import companion
         companion.install_sentinel(self.bot, support.forge.DEFAULT_APPROVALS)
         cfg = support.yaml.safe_load((self.bot / "config.yaml").read_text(encoding="utf-8"))
-        policy = {k: core_get_config(cfg, "bot-forge-sentinel", k)
+        policy = {k: core_get_config(cfg, "fabric-sentinel", k)
                   for k in ("refuse", "ask", "allow", "mode", "guard_defaults", "limits")}
         self.assertEqual(guard.decide("send_email", policy)["action"], "approve")
         self.assertIsNone(guard.decide("read_file", policy))
+
+
+class LegacySentinelCompatibility(unittest.TestCase):
+    def test_legacy_policy_settings_are_carried_forward(self):
+        import companion
+        with tempfile.TemporaryDirectory() as tmp:
+            root = support.make_root(Path(tmp), profiles=())
+            bot = root / "profiles" / "legacy"
+            bot.mkdir(parents=True)
+            original = {"plugins": {"enabled": ["bot-forge-sentinel"], "entries": {
+                "bot-forge-sentinel": {"settings": {"refuse": ["delete_profile"], "mode": "ask"}}}},
+                "bot-forge-sentinel": {"allow": ["read_file"]}}
+            support.forge.dump_yaml(bot / "config.yaml", original)
+            out = companion.install_sentinel(bot, [])
+            self.assertTrue(out["ok"], out)
+            after = support.yaml.safe_load((bot / "config.yaml").read_text(encoding="utf-8"))
+            self.assertEqual(companion.read_sentinel_policy(after)["refuse"], ["delete_profile"])
+            self.assertEqual(companion.read_sentinel_policy(after)["mode"], "ask")
+            self.assertNotIn("bot-forge-sentinel", after)
+            self.assertEqual(companion.read_sentinel_policy(after)["allow"], ["read_file"])
+            self.assertEqual(after["plugins"]["entries"]["bot-forge-sentinel"]["settings"]["refuse"],
+                             ["delete_profile"])
 
 
 class PolicyFollowsTheWording(unittest.TestCase):

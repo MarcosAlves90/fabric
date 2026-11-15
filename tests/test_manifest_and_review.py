@@ -32,7 +32,7 @@ class Manifest(unittest.TestCase):
 
     def test_versions_agree(self):
         manifest = yaml.safe_load(Path(ROOT / "plugin.yaml").read_text(encoding="utf-8"))
-        skill = (ROOT / "skills" / "bot-forge" / "SKILL.md").read_text(encoding="utf-8")
+        skill = (ROOT / "skills" / "fabric" / "SKILL.md").read_text(encoding="utf-8")
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         self.assertIn(f"version: {manifest['version']}", skill)
         self.assertIn(f"## [{manifest['version']}]", changelog)

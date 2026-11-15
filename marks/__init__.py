@@ -1,4 +1,4 @@
-"""Bot Forge marks: the acknowledgement reaction, installed into a Bot's own profile.
+"""Fabric marks: the acknowledgement reaction, installed into a Bot's own profile.
 
 A hook runs in whichever profile runs the turn — so a hook living in the profile that *created* a
 Bot never fires when the user talks to that Bot. This is the piece that ships with the Bot. It

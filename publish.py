@@ -7,7 +7,7 @@ does the posting, and lets `import_agent` take the link instead of a file — so
 Two decisions worth stating, because both could have gone the other way:
 
 * **No credential of our own.** Publishing goes through the user's own `gh` CLI, which already holds
-  their GitHub auth. Bot Forge stores no token, asks for none, and when `gh` is missing or signed
+  their GitHub auth. Fabric stores no token, asks for none, and when `gh` is missing or signed
   out it says so instead of offering to hold one. That keeps the plugin's no-credentials rule
   intact for a feature that is, by nature, an account action.
 * **A link is not a private file.** A secret gist is unlisted, not protected: anyone holding the URL
@@ -87,7 +87,7 @@ def fetch(url: str, opener=None) -> dict:
     if m:
         raw = f"https://gist.githubusercontent.com/{url.split('/')[3]}/{m.group(1)}/raw"
     try:
-        request = urllib.request.Request(raw, headers={"User-Agent": "bot-forge"})
+        request = urllib.request.Request(raw, headers={"User-Agent": "Fabric"})
         with (opener or urllib.request.urlopen)(request, timeout=FETCH_TIMEOUT) as response:
             body = response.read(MAX_FETCH_BYTES + 1)
     except (urllib.error.URLError, OSError, ValueError) as exc:

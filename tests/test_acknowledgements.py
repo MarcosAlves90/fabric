@@ -104,6 +104,7 @@ class Acknowledgements(unittest.TestCase):
             self.assertTrue(out["changed"])
             self.assertTrue(out["upgraded"])
             self.assertTrue(acks.acks_enabled(d))
+            self.assertIn(acks.ACK_MARKER, (d / "SOUL.md").read_text(encoding="utf-8"))
 
     def test_apply_is_idempotent_and_keeps_the_persona(self):
         import acks

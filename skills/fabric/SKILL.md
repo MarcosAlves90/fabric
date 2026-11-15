@@ -1,5 +1,5 @@
 ---
-name: bot-forge
+name: fabric
 description: "Design a new Hermes Bot from one sentence and spawn it with the create_agent tool. Role defaults, SOUL.md template, zero questions."
 version: 0.27.0
 author: Bikash Joshi
@@ -10,7 +10,7 @@ metadata:
     tags: [bots, bot-mode, profiles, spawn, create-agent]
 ---
 
-# Bot Forge
+# Fabric
 
 Choose the smallest sufficient setup before provisioning. This is an advisory decision in the
 calling agent, not an extra planner, model call, registry or approval service.
@@ -119,7 +119,7 @@ The result's `workspace` block is what you report: `fits` (the places it belongs
 **If the tool refuses with `covered_by`,** an existing Bot already does this job. Do not retry blindly. Tell the user which Bot holds it and offer the two real choices: a narrower job for the new Bot, or `update_agent` on the existing one. Only pass `allow_overlap: true` after they say they want both.
 
 ## Plugins in a Bot
-A new Bot's config lists the same plugins as the user's main profile, but the plugin directories are not cloned, so those plugins never load in it. That is on purpose: a Bot gets only what it was asked for. When the user wants a plugin in the Bot — "every Bot should have my style plugin", "give Nova the bookmarks plugin" — pass `inherit_plugins: ["<name>"]` to `create_agent` (or `["all"]` for everything enabled on the main profile), or `update_agent(name, inherit_plugins: [...])` for a Bot that already exists. Bot Forge itself is never copied into a Bot and no credential file travels with a plugin; a plugin that needs a key still needs the user to set it in that Bot. `check_agents` flags a Bot whose config names a plugin that is not installed in it ("enabled but not installed"); the fix is the same `update_agent` call, or leaving it alone if the user never wanted that plugin there.
+A new Bot's config lists the same plugins as the user's main profile, but the plugin directories are not cloned, so those plugins never load in it. That is on purpose: a Bot gets only what it was asked for. When the user wants a plugin in the Bot — "every Bot should have my style plugin", "give Nova the bookmarks plugin" — pass `inherit_plugins: ["<name>"]` to `create_agent` (or `["all"]` for everything enabled on the main profile), or `update_agent(name, inherit_plugins: [...])` for a Bot that already exists. Fabric itself is never copied into a Bot and no credential file travels with a plugin; a plugin that needs a key still needs the user to set it in that Bot. `check_agents` flags a Bot whose config names a plugin that is not installed in it ("enabled but not installed"); the fix is the same `update_agent` call, or leaving it alone if the user never wanted that plugin there.
 
 ## Its own screen
 `bot_screen: true` gives the Bot a desktop on the gateway host: it browses and clicks there, the user watches in Hermes Desktop, takes over for a login, 2FA or CAPTCHA, and hands back — the Bot continues with the session the user just signed in to. It grants `computer_use` and `browser`.
@@ -202,11 +202,11 @@ this feature is explicit configuration, not an automatic model-tiering service.
 
 ## Gateway topology
 When `install_gateway` is enabled, a live host gateway's served roster determines readiness.
-Bot Forge requests a native hot-rescan when necessary, without restarting the host or forcing
+Fabric requests a native hot-rescan when necessary, without restarting the host or forcing
 a new per-profile service. Pending means not yet verified, not necessarily broken. Do not
 unpark a profile or enable standalone mode to turn a warning green. Older/unavailable control
 support also stays unverified; follow the installed Hermes docs for operator setup.
-`install_gateway: false` skips Bot Forge's gateway setup; it does not park a profile or stop
+`install_gateway: false` skips Fabric's gateway setup; it does not park a profile or stop
 the host's independent discovery. Windows retains the existing gateway-setup skip.
 
 ## Teaching

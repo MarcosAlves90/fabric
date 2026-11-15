@@ -29,6 +29,13 @@ def _normalise(names):
     return frozenset(n.strip().lower() for n in names if isinstance(n, str) and n.strip())
 
 
+def _allowed_tools(names):
+    allowed = set(_normalise(names))
+    legacy_prefix = "bot-forge-sentinel:"
+    allowed.update(name[len(legacy_prefix):] for name in tuple(allowed) if name.startswith(legacy_prefix))
+    return frozenset(allowed)
+
+
 def _category(tool: str):
     """The approval category a tool name falls in, or None.
 
@@ -125,7 +132,8 @@ def decide(tool: str, policy: dict, args=None) -> dict | None:
         # Unreadable policy is exactly when a Bot should do less, not more.
         return _block(name, "its policy could not be read")
 
-    refuse, ask, allow = (_normalise(policy.get(k)) for k in ("refuse", "ask", "allow"))
+    refuse, ask = (_normalise(policy.get(k)) for k in ("refuse", "ask"))
+    allow = _allowed_tools(policy.get("allow"))
 
     if name in refuse:
         return _block(name, "this Bot's policy refuses it")
@@ -158,7 +166,7 @@ def decide(tool: str, policy: dict, args=None) -> dict | None:
 
 def _block(tool: str, why: str) -> dict:
     return {"action": "block",
-            "message": f"Refused by Bot Forge Sentinel: `{tool}` was not run because {why}. "
+            "message": f"Refused by Fabric Sentinel: `{tool}` was not run because {why}. "
                        f"Nothing happened. Say what you were trying to do and ask the user."}
 
 
@@ -166,5 +174,5 @@ def _ask(tool: str, why: str) -> dict:
     # rule_key decides what the user's "always allow" later covers. Keyed on the tool, so
     # answering always for one tool does not quietly clear a whole category.
     return {"action": "approve",
-            "message": f"Bot Forge Sentinel: `{tool}` needs you — {why}.",
-            "rule_key": f"bot-forge-sentinel:{tool}"}
+            "message": f"Fabric Sentinel: `{tool}` needs you — {why}.",
+            "rule_key": f"fabric-sentinel:{tool}"}

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Rebuild the social card: the layout is an SVG, the hero artwork is composited over it, so the
-# two can change independently. Run from the repo root.
+# The social card's layout and hero artwork are in docs/social-preview.svg and
+# docs/hero-character.png. Run from the repo root.
 set -euo pipefail
-rsvg-convert -w 1280 -h 640 docs/social-card.svg -o /tmp/bot-forge-card-bg.png
-magick /tmp/bot-forge-card-bg.png \
+sips -s format png docs/social-preview.svg --out "$TMPDIR/fabric-social-base.png"
+magick "$TMPDIR/fabric-social-base.png" \
   \( docs/hero-character.png -resize x600 \) -gravity southwest -geometry +56+6 -composite \
   docs/social-preview.png
 magick docs/social-preview.png -resize 1200x600! docs/banner.png

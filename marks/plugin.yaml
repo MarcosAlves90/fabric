@@ -1,5 +1,5 @@
 manifest_version: 1
-name: bot-forge-marks
+name: fabric-marks
 version: 0.15.0
 description: Reacts to your message while a Bot works on it — 👀 on pickup, then ✅ / ✋ / ⚠️ for how the turn ended. Hooks only; grants the Bot no tools.
 author: Bikash Joshi

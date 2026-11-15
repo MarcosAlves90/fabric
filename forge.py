@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bot-forge: build a complete Hermes Bot (profile) from one JSON spec, no human input.
+"""fabric: build a complete Hermes Bot (profile) from one JSON spec, no human input.
 
 usage: forge.py spec.json   (or: forge.py - < spec.json)
 
@@ -262,7 +262,7 @@ def provision_gateway(root: Path, profile_id: str, settings: dict) -> str:
             host = home
 
     if standalone:
-        # This is an existing explicit configuration, not a topology chosen by Bot Forge.
+        # This is an existing explicit configuration, not a topology chosen by Fabric.
         # The native CLI still owns all refusal/attach rules; never add --force.
         gw = run(root, "-p", profile_id, "gateway", "install", "--start-now", "--start-on-login",
                  check=False, timeout=120)
@@ -636,11 +636,11 @@ def write_bot_meta(pdir: Path, display, description, kind, needs=None):
     revisions["hermes-bots"] = int(revisions.get("hermes-bots", 0)) + 1
     data.update({"display_name": display, "ui_meta": ui_meta, "_ui_meta_revisions": revisions})
     if needs:
-        # Bot Forge's own block. ui_meta belongs to Desktop; what a Bot needs before it can start
+        # Fabric's own block. ui_meta belongs to Desktop; what a Bot needs before it can start
         # is ours, and it lives beside the rest of its traits rather than in a second file.
-        block = data.get("bot_forge") if isinstance(data.get("bot_forge"), dict) else {}
+        block = data.get("fabric") if isinstance(data.get("fabric"), dict) else {}
         block["needs"] = dict(needs)
-        data["bot_forge"] = block
+        data["fabric"] = block
     dump_yaml(path, data)
 
 
@@ -943,7 +943,7 @@ def forge(s: dict) -> dict:
 
         # `profile create --clone-from` copies config.yaml — with the root's plugins.enabled list — but not
         # the plugin directories, so a user plugin on the root profile is enabled-but-inert in the Bot. Opt in
-        # (the setting, or the call) to carry them across; Bot Forge itself and credentials never travel.
+        # (the setting, or the call) to carry them across; Fabric itself and credentials never travel.
         plugins = None
         wanted = s["inherit_plugins"] if s.get("inherit_plugins") is not None else settings.get("inherit_plugins")
         if wanted not in (None, False, [], ""):

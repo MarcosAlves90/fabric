@@ -1,6 +1,6 @@
 """Install the acknowledgement hook into a Bot's own profile.
 
-Hermes runs a plugin hook in whichever profile runs the turn. Bot Forge lives in the profile that
+Hermes runs a plugin hook in whichever profile runs the turn. Fabric lives in the profile that
 *creates* Bots, so its hooks never fire when the user talks to one of those Bots — which is why a
 reaction placed from here could never appear on a Bot's chat. The `marks/` companion is the piece
 that ships with the Bot: two hooks, no tools, so a Bot gains the reaction and nothing else.
@@ -15,9 +15,11 @@ if __package__:
 else:
     import forge
 
-MARKS_NAME = "bot-forge-marks"
+MARKS_NAME = "fabric-marks"
+LEGACY_MARKS_NAME = "bot-forge-marks"
 SOURCE = Path(__file__).resolve().parent / "marks"
-SENTINEL_NAME = "bot-forge-sentinel"
+SENTINEL_NAME = "fabric-sentinel"
+LEGACY_SENTINEL_NAME = "bot-forge-sentinel"
 SENTINEL_SOURCE = Path(__file__).resolve().parent / "sentinel"
 FORGE_DIR = Path(__file__).resolve().parent
 # Never carried into a Bot with an inherited plugin: VCS and build litter, and anything that could
@@ -38,12 +40,15 @@ def installed_dir(pdir: Path) -> Path:
 
 def installed_version(pdir: Path) -> str:
     folder = installed_dir(pdir)
-    return marks_version(folder) if (folder / "plugin.yaml").exists() else ""
+    if (folder / "plugin.yaml").exists():
+        return marks_version(folder)
+    legacy = Path(pdir) / "plugins" / LEGACY_MARKS_NAME
+    return marks_version(legacy) if (legacy / "plugin.yaml").exists() else ""
 
 
 def is_enabled(pdir: Path) -> bool:
     enabled = (forge.load_yaml(Path(pdir) / "config.yaml").get("plugins") or {}).get("enabled") or []
-    return MARKS_NAME in enabled
+    return bool({MARKS_NAME, LEGACY_MARKS_NAME}.intersection(enabled))
 
 
 def marks_ready(pdir: Path) -> bool:
@@ -77,7 +82,11 @@ def install_marks(pdir: Path) -> dict:
     if not (pdir / "config.yaml").exists():
         return {"ok": False, "error": f"{pdir.name} has no config.yaml"}
     target = installed_dir(pdir)
-    have, want = installed_version(pdir), marks_version()
+    legacy = pdir / "plugins" / LEGACY_MARKS_NAME
+    if not (target / "plugin.yaml").exists() and (legacy / "plugin.yaml").exists() and is_enabled(pdir):
+        return {"ok": True, "name": LEGACY_MARKS_NAME, "version": installed_version(pdir),
+                "copied": False, "enabled": True, "previous_version": installed_version(pdir)}
+    have, want = marks_version(target) if (target / "plugin.yaml").exists() else "", marks_version()
     copied = have != want
     if copied:
         try:
@@ -138,7 +147,7 @@ def read_sentinel_policy(cfg: dict) -> dict:
 
 def _legacy_policy(cfg: dict) -> dict:
     """A policy left at the old top-level key by v0.19.0-v0.22.0, so an upgrade keeps it."""
-    old = cfg.get(SENTINEL_NAME)
+    old = cfg.get(SENTINEL_NAME) or cfg.get(LEGACY_SENTINEL_NAME)
     return old if isinstance(old, dict) else {}
 
 
@@ -166,13 +175,15 @@ def install_sentinel(pdir: Path, approvals=None) -> dict:
     cfg = forge.load_yaml(cfg_path)
 
     # Everything an operator already set, from either location, wins over what we derive.
-    existing = {**_legacy_policy(cfg), **read_sentinel_policy(cfg)}
+    legacy_entry = (((cfg.get("plugins") or {}).get("entries") or {}).get(LEGACY_SENTINEL_NAME) or {}).get("settings") or {}
+    existing = {**legacy_entry, **_legacy_policy(cfg), **read_sentinel_policy(cfg)}
     if existing:
         # Never undo a rule added by hand; only fill in what is missing.
         policy = {**policy, **existing}
 
     write_sentinel_policy(cfg, policy)
     cfg.pop(SENTINEL_NAME, None)  # drop the key that was never read, so there is one source
+    cfg.pop(LEGACY_SENTINEL_NAME, None)
     forge.dump_yaml(cfg_path, cfg)
     return {**result, "policy": policy, "enforcing": bool(policy.get("guard_defaults"))}
 
@@ -205,9 +216,9 @@ def enabled_plugins(home: Path) -> list:
 
 
 def is_forge_itself(folder: Path) -> bool:
-    """Bot Forge must never be copied into a Bot: a Bot would gain create/delete powers over Bots."""
+    """Fabric must never be copied into a Bot: a Bot would gain create/delete powers over Bots."""
     try:
-        return Path(folder).resolve() == FORGE_DIR or _manifest_name(folder) == "bot-forge"
+        return Path(folder).resolve() == FORGE_DIR or _manifest_name(folder) in {"fabric", "bot-forge"}
     except OSError:
         return False
 
@@ -239,7 +250,7 @@ def select_inherited(root: Path, wanted) -> tuple:
     """Resolve an ``inherit_plugins`` value into (name -> source dir, skipped reasons).
 
     ``True`` means every plugin enabled on the root profile that has a directory there; a list names
-    them one by one. Bot Forge itself and its companion are never inherited (the companion is installed
+    them one by one. Fabric itself and its companion are never inherited (the companion is installed
     on its own path, at the current version). A name that cannot be carried is returned in the
     skipped list with its reason, never dropped silently."""
     root = Path(root)
@@ -261,12 +272,13 @@ def select_inherited(root: Path, wanted) -> tuple:
             continue
         seen.add(name)
         source = available.get(name)
-        if name == MARKS_NAME or (source and _manifest_name(source) == MARKS_NAME):
-            skipped.append({"name": name, "reason": "the reaction companion is installed by Bot Forge itself"})
+        if name in {MARKS_NAME, LEGACY_MARKS_NAME, SENTINEL_NAME, LEGACY_SENTINEL_NAME} or \
+                (source and _manifest_name(source) in {MARKS_NAME, LEGACY_MARKS_NAME, SENTINEL_NAME, LEGACY_SENTINEL_NAME}):
+            skipped.append({"name": name, "reason": "Fabric installs its companions directly"})
         elif source is None:
             skipped.append({"name": name, "reason": "not installed under the root profile's plugins/"})
         elif is_forge_itself(source):
-            skipped.append({"name": name, "reason": "Bot Forge is never copied into a Bot"})
+            skipped.append({"name": name, "reason": "Fabric is never copied into a Bot"})
         elif source.resolve() in {p.resolve() for p in chosen.values()}:
             continue  # alias of one already chosen
         elif blanket and needs_credentials(source):
@@ -357,7 +369,7 @@ def bots_without_marks(root: Path) -> list:
             continue
         meta = ((forge.load_yaml(pdir / "profile.yaml").get("ui_meta") or {}).get("hermes-bots") or {})
         if not meta:
-            continue  # not a Bot Forge Bot
+            continue  # not a Fabric Bot
         have = installed_version(pdir)
         if marks_ready(pdir):
             continue
@@ -376,8 +388,9 @@ def companion_running(plugin_dir: Path) -> bool:
     cleared, and the user sees nothing at all. The companion wins that tie: it ships inside every
     Bot, including the profile that creates them, so it is the copy that is always present.
     """
-    sibling = Path(plugin_dir).parent / MARKS_NAME
-    if not (sibling / "plugin.yaml").exists():
+    siblings = [Path(plugin_dir).parent / name for name in (MARKS_NAME, LEGACY_MARKS_NAME)]
+    sibling = next((p for p in siblings if (p / "plugin.yaml").exists()), None)
+    if sibling is None:
         return False
     try:
         import yaml
@@ -385,7 +398,7 @@ def companion_running(plugin_dir: Path) -> bool:
         data = yaml.safe_load((Path(plugin_dir).parent.parent / "config.yaml").read_text(encoding="utf-8")) or {}
     except Exception:
         return True  # installed but the config cannot be read: never risk double-placing
-    return MARKS_NAME in ((data.get("plugins") or {}).get("enabled") or [])
+    return bool({MARKS_NAME, LEGACY_MARKS_NAME}.intersection((data.get("plugins") or {}).get("enabled") or []))
 
 
 # ── adoption ─────────────────────────────────────────────────────────────────

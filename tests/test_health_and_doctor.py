@@ -130,9 +130,9 @@ class Doctor(unittest.TestCase):
         import yaml as y
         t = tempfile.mkdtemp()
         root = make_root(Path(t))
-        cfg = {"model": {"default": "m", "provider": "custom"}}
+        cfg = {"model": {"default": "m", "provider": "anthropic"}}
         if enabled:
-            cfg["plugins"] = {"enabled": ["bot-forge"]}
+            cfg["plugins"] = {"enabled": ["fabric"]}
         (root / "config.yaml").write_text(y.safe_dump(cfg), encoding="utf-8")
         return root
 
@@ -144,7 +144,7 @@ class Doctor(unittest.TestCase):
             out = doctor.check(self._root(enabled=False))
         self.assertFalse(out["ok"])
         self.assertEqual(out["status"], "fail")
-        self.assertTrue(any("plugins enable bot-forge" in s for s in out["next_steps"]))
+        self.assertTrue(any("plugins enable fabric" in s for s in out["next_steps"]))
 
     def test_stale_gateway_is_reported_with_a_restart_step(self):
         import doctor
@@ -171,7 +171,23 @@ class Doctor(unittest.TestCase):
         self.assertTrue(out["ok"])
         self.assertEqual(out["next_steps"], [])
         self.assertIn("docker", next(c for c in out["checks"] if c["check"] == "sandboxes")["detail"])
-        self.assertIn("Bot Forge doctor", doctor.render(out))
+        self.assertIn("Fabric doctor", doctor.render(out))
+
+    def test_legacy_plugin_id_and_settings_remain_readable(self):
+        import doctor
+        from unittest import mock
+        root = self._root(enabled=False)
+        cfg_path = root / "config.yaml"
+        cfg = __import__("yaml").safe_load(cfg_path.read_text(encoding="utf-8"))
+        cfg["plugins"] = {"enabled": ["bot-forge"], "entries": {
+            "bot-forge": {"settings": {"fallback_model": "legacy-model"}}}}
+        cfg_path.write_text(__import__("yaml").safe_dump(cfg), encoding="utf-8")
+        with mock.patch.object(doctor, "_gateway_pids", return_value={}), \
+                mock.patch.object(doctor, "sandbox_backends", return_value={}):
+            out = doctor.check(root)
+        self.assertTrue(any(c["check"] == "enabled" and c["status"] == "ok" for c in out["checks"]))
+        self.assertEqual(next(c["status"] for c in out["checks"] if c["check"] == "model (default)"), "ok")
+        self.assertIn("bot-forge", cfg_path.read_text(encoding="utf-8"))
 
 
 

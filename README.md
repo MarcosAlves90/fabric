@@ -1,28 +1,25 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Bot Forge — one sentence to a complete, working Hermes Bot" width="100%">
+  <img src="docs/banner.png" alt="Fabric — one sentence to a complete, working Hermes Bot" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/plugins/"><img src="https://img.shields.io/badge/Hermes%20plugin%20catalog-listed-22D3EE?style=flat-square" alt="in the Hermes plugin catalog"></a>
-  <a href="https://github.com/BkashJEE/hermes-bot-forge/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/BkashJEE/hermes-bot-forge/tests.yml?style=flat-square&label=tests" alt="tests"></a>
-  <a href="https://github.com/BkashJEE/hermes-bot-forge/releases"><img src="https://img.shields.io/github/v/release/BkashJEE/hermes-bot-forge?style=flat-square&color=8B5CF6" alt="release"></a>
+  <a href="https://github.com/BkashJEE/hermes-bot-forge/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/BkashJEE/hermes-bot-forge/tests.yml?style=flat-square&label=upstream%20tests" alt="upstream tests"></a>
+  <a href="https://github.com/BkashJEE/hermes-bot-forge/releases"><img src="https://img.shields.io/github/v/release/BkashJEE/hermes-bot-forge?style=flat-square&color=8B5CF6&label=upstream%20release" alt="upstream release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-64748B?style=flat-square" alt="MIT"></a>
 </p>
 
-# Hermes Bot Forge
+# Fabric
 
 **Describe the job. Reuse what fits; provision a new Bot when it needs its own persistent role.**
 
-```bash
-hermes plugins install bot-forge
-```
+This checkout is not published under a Fabric catalog entry or remote yet, so there is no Fabric install command. Install instructions will be added when a Fabric remote is available. Existing `bot-forge` IDs and settings remain documented below for installations created under the former name.
 
 <p align="center">
   <img src="docs/demo.gif" alt="One sentence becomes a complete working Bot — identity, SOUL.md, memory, tools, routines and a running gateway" width="480">
 </p>
 
 
-Bot Forge is a [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that lets any agent spawn a complete, working [Bot Mode](https://hermes-agent.nousresearch.com/docs/user-guide/bot-mode) Bot from one sentence — no New Agent dialog, no setup:
+Fabric is a [Hermes Agent](https://github.com/NousResearch/hermes-agent) plugin that lets any agent spawn a complete, working [Bot Mode](https://hermes-agent.nousresearch.com/docs/user-guide/bot-mode) Bot from one sentence — no New Agent dialog, no setup:
 
 | The new Bot gets | |
 |---|---|
@@ -84,22 +81,40 @@ Python packages yourself.
 
 ### 2. Install
 
-```bash
-hermes plugins install BkashJEE/hermes-bot-forge
+This repository is unpublished as Fabric. Do not install the former Bot Forge project; Fabric install instructions require a published Fabric remote.
+
+### 3. Configure Fabric
+
+Fabric settings are configured per profile under `plugins.entries.fabric.settings` in that profile's `config.yaml`:
+
+```yaml
+plugins:
+  entries:
+    fabric:
+      settings:
+        inherit_model: true
+        fallback_model: {}
+        probe_local_models: false
+        install_gateway: true
+        journal_enabled: true
+        suggest_connectors: true
+        allow_delete: false
 ```
 
-### 3. Enable it where you chat
+For an installation still using the former plugin ID, `plugins.entries.bot-forge.settings` remains accepted as a **legacy compatibility** key; the Fabric key above is the primary configuration for Fabric.
 
-Plugins are opt-in **per profile**. Enable Bot Forge on each profile that should be able to create Bots — your main profile, and any "manager" Bot:
+### 4. Enable an existing legacy installation
+
+The following commands only enable or diagnose an installation that still uses the legacy `bot-forge` ID; they do not install this unpublished Fabric checkout.
 
 ```bash
 hermes plugins enable bot-forge              # the default profile
 hermes -p ceo plugins enable bot-forge       # a Bot named "ceo"
 ```
 
-If `enable` asks to grant tool overrides, answer **no** — Bot Forge doesn't override anything.
+If `enable` asks to grant tool overrides, answer **no** — Fabric doesn't override anything.
 
-### 4. Restart Hermes
+### 5. Restart Hermes
 
 ```bash
 hermes gateway restart
@@ -108,7 +123,9 @@ hermes gateway restart
 
 Then quit and reopen **Hermes Desktop**.
 
-### 5. Check it's loaded
+### 6. Check an existing legacy installation
+
+These diagnostics apply only to an installation that still uses the `bot-forge` ID:
 
 ```bash
 hermes bot-forge-doctor
@@ -122,7 +139,7 @@ hermes plugins list | grep bot-forge
 
 Or ask your agent: *"what tools do you have for creating agents?"* — it should name `create_agent`, `update_agent`, `list_agents` and the rest.
 
-### 6. Make your first Bot
+### 7. Make your first Bot
 
 Open **Bot Mode**, click the Bot you enabled, and type:
 
@@ -138,7 +155,7 @@ brain: gpt-6-astra   tools: browser, file, web, …
 
 Click the new Bot — its Bot Chat already has its introduction.
 
-### 7. Choose how new Bots sign in
+### 8. Choose how new Bots sign in
 
 Unless given an explicit route, new Bots retain the existing model inheritance behavior.
 `create_agent.model`, `create_team.lead.model` and `create_team.members[].model` accept:
@@ -201,12 +218,12 @@ reasoning, and the tests that hold it, are in [docs/shared-policy.md](docs/share
 
 ## Settings
 
-Set per profile under `plugins.entries.bot-forge.settings` in that profile's `config.yaml`:
+Set per profile under `plugins.entries.fabric.settings` in that profile's `config.yaml`:
 
 ```yaml
 plugins:
   entries:
-    bot-forge:
+    fabric:
       settings:
         inherit_model: true
         fallback_model: {}
@@ -215,7 +232,12 @@ plugins:
         journal_enabled: true
         suggest_connectors: true
         allow_delete: false
+        backup_before_delete: true
+        allow_secrets: false
+        inherit_plugins: []
 ```
+
+`plugins.entries.bot-forge.settings` is retained only as a legacy compatibility key for existing installations; use the Fabric key for current configuration.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -238,11 +260,11 @@ A new Bot is a clone of your main profile's config, and that config lists the pl
 - `create_agent(..., inherit_plugins: [...])` does it for one Bot, and `update_agent(name, inherit_plugins: [...])` for a Bot you already have.
 - `check_agents` flags a Bot whose config names a plugin that is not installed in it.
 
-A copied plugin is enabled in the Bot's config and gets its own `plugin-data`. Bot Forge itself is never copied into a Bot (a Bot must not be able to create or delete Bots), the reaction companion is installed on its own path, and no `.env`, key or credential file travels with a plugin — a plugin that needs a secret needs you to set it in that Bot, once.
+A copied plugin is enabled in the Bot's config and gets its own `plugin-data`. Fabric itself is never copied into a Bot (a Bot must not be able to create or delete Bots), the reaction companion is installed on its own path, and no `.env`, key or credential file travels with a plugin — a plugin that needs a secret needs you to set it in that Bot, once.
 
 ### Sharing one login across Bots
 
-Bot Forge never touches credentials, and there is no helper here that copies them.
+Fabric never touches credentials, and there is no helper here that copies them.
 
 An earlier version shipped `extras/share_login.py`, which copied the root profile's `auth.json`
 into each Bot. It is gone: duplicating a credential file leaves copies nobody tracks, OAuth
@@ -269,8 +291,8 @@ Fifteen tools, all driven by plain requests in chat:
 | `agent_journal` | *"what did Inkwell work on this week?"* | Enables, appends to, and reads a Bot's dated work journal. Entries capture outcomes and evidence, never credentials or private reasoning. |
 | `ask_agent` | *"ask Inkwell for 3 post ideas"* | Asks another Bot a question and returns its reply. |
 | `handoff_agent` | *"pass this to Nova"*, *"let Scout take the research"* | Hands a task **and its context** to another Bot, which then owns it. Runs in that Bot's own Bot Chat; comes back as ✅ done / ✋ needs you / ⚠️ blocked plus the reply. Both Bots journal it. If the receiving Bot declared what it needs before it can start, a handoff that does not carry it is refused before it is sent. |
-| `share_agent` | *"share Inkwell with a friend"* | Writes a readable `.botforge.json` template — persona, its own memory, tools, skills, routines. **Never chat history, facts about you, or keys**, and secret-scanned (CLEAN / WARN / BLOCK). `mode: backup` makes a full private backup instead. |
-| `import_agent` | *"import this bot"* | Builds a Bot from a `.botforge.json` template (scanned again), or restores a backup. |
+| `share_agent` | *"share Inkwell with a friend"* | Writes a readable `.fabric.json` template — persona, its own memory, tools, skills, routines. **Never chat history, facts about you, or keys**, and secret-scanned (CLEAN / WARN / BLOCK). `mode: backup` makes a full private backup instead. |
+| `import_agent` | *"import this bot"* | Builds a Bot from a `.fabric.json` template (scanned again), or restores a backup. |
 | `hide_agent` | *"hide Inkwell from the list"* | Hides or unhides it in the roster. It keeps running. |
 | `delete_agent` | *"delete Inkwell"* | Permanent. **Off unless you enable it**, and it must repeat the Bot's exact name. |
 
@@ -303,7 +325,7 @@ Marshal doesn't write it. It calls `handoff_agent` with the task and everything 
 | `blocked` | ⚠️ | what it needs — also in the waiting queue |
 | `scheduled` | ⏳ | when it will run |
 
-The state is read from the acknowledgement every Bot Forge Bot already starts its replies with, so no second convention is needed. Both Bots journal the handoff (*"Handed off to Inkwell"*, *"Handoff from Marshal"*), the record lives with the Bot that owns the work, and `check_agents` lists every handoff still in flight — so *"where did that task go?"* has an answer, even a week later.
+The state is read from the acknowledgement every Fabric Bot already starts its replies with, so no second convention is needed. Both Bots journal the handoff (*"Handed off to Inkwell"*, *"Handoff from Marshal"*), the record lives with the Bot that owns the work, and `check_agents` lists every handoff still in flight — so *"where did that task go?"* has an answer, even a week later.
 
 Only words cross between Bots. No file is copied, no credential or environment travels, and the task and context are secret-scanned before anything is sent: a key pasted into the context is refused with the reason, and nothing runs.
 
@@ -380,7 +402,7 @@ The item closes itself when the Bot records the same piece of work as completed 
 
 ### It knows where it landed
 
-A new Bot normally arrives knowing its job and nothing about your machine, so the first thing you do is explain your own workspace to it. Bot Forge reads that once, at birth:
+A new Bot normally arrives knowing its job and nothing about your machine, so the first thing you do is explain your own workspace to it. Fabric reads that once, at birth:
 
 > make me a social media manager
 
@@ -402,7 +424,7 @@ Read-only and shallow — directory names, git remotes, and the head of a README
 The waiting queue answers *when you ask*. This is the other half: when a Bot records a blocker, it emails you.
 
 ```
-[Bot Forge] Marlow is blocked — Need the Stripe API key
+[Fabric] Marlow is blocked — Need the Stripe API key
 
 Marlow stopped and needs you.
 
@@ -421,13 +443,15 @@ It uses the email Hermes already has (`EMAIL_SMTP_HOST` / `EMAIL_ADDRESS` / `EMA
 
 **For the whole queue on a schedule — no email needed.** Hermes delivers the job's output wherever that profile already delivers (Bot Chat, Telegram, wherever), and it runs with `--no-agent`, so it costs no model turn:
 
+For a Bot created before this feature, the following command applies to an existing legacy installation only:
+
 ```bash
 python3 ~/.hermes/plugins/bot-forge/notify.py schedule "0 8 * * *"
 ```
 
 An empty queue prints nothing, so a quiet week is a quiet inbox — a digest that greets you every morning with "nothing is waiting" is one you stop reading. `check_install` tells you whether anything is scheduled.
 
-To send it by email instead:
+For an existing legacy installation, send the digest by email with:
 
 ```bash
 python3 ~/.hermes/plugins/bot-forge/notify.py digest
@@ -449,7 +473,9 @@ They import it with the link, and get their own copy:
 
 The template carries the Bot's **design** — persona, tools, skill choices, taught skills, routines — and never your chat history, your work journal, facts about you, or any key. It is secret-scanned on the way out **and on the way in**, so a Bot carrying someone's leaked credential is refused at both ends.
 
-Publishing goes through your own `gh` CLI, which already holds your GitHub login. Bot Forge stores no token and asks for none; with `gh` missing or signed out it says so and still writes the file.
+Fabric templates use the `.fabric.json` filename and `fabric/template` format marker. Existing `.botforge.json` files with the `bot-forge/template` marker remain accepted as legacy input; this compatibility does not make Bot Forge a Fabric install source.
+
+Publishing goes through your own `gh` CLI, which already holds your GitHub login. Fabric stores no token and asks for none; with `gh` missing or signed out it says so and still writes the file.
 
 ### A screen of its own
 
@@ -466,7 +492,7 @@ in there, not in chat: Hermes' desktop lease discards any frame captured across 
 what you type never reaches the Bot. It will not resume by itself; tell it to carry on once you have
 handed back.
 
-**It refuses rather than half-delivering.** On macOS or Windows there is no separate screen to give, so the Bot would act on *your* display; Bot Forge says so and declines instead of quietly handing a Bot your desktop. If the host is missing TigerVNC/Xfce or the cua-driver, the refusal names what is missing and the command that fixes it, and no Bot is created.
+**It refuses rather than half-delivering.** On macOS or Windows there is no separate screen to give, so the Bot would act on *your* display; Fabric says so and declines instead of quietly handing a Bot your desktop. If the host is missing TigerVNC/Xfce or the cua-driver, the refusal names what is missing and the command that fixes it, and no Bot is created.
 
 ### Cost and safety built in
 
@@ -484,7 +510,7 @@ handed back.
 
 So a Bot that drafts posts never publishes one, and knows who to escalate to.
 
-Bundled skill: `bot-forge:bot-forge` — role defaults, naming rules and a SOUL.md template your agent follows.
+Bundled skill: `fabric:fabric` — role defaults, naming rules and a SOUL.md template your agent follows. Older installations may still expose it as `bot-forge:bot-forge`.
 
 ## How it works
 
@@ -516,7 +542,7 @@ The existing general `check_agents`/`check_install` diagnostics are outside this
 
 ## What makes it different
 
-| | Grok Bots | OpenMausBot | OpenClaw | **Bot Forge** |
+| | Grok Bots | OpenMausBot | OpenClaw | **Fabric** |
 |---|---|---|---|---|
 | Build a Bot from one sentence, no dialog | partial | roster UI | config/CLI | ✅ |
 | Creation checks and failure cleanup | — | — | — | ✅; pending sign-in/gateway reported separately |
@@ -557,7 +583,7 @@ On Hermes versions that persist launch overrides, that cap also applies to later
 even when the profile's `agent.max_turns` is higher. New chats now inherit the profile's
 budget unless a caller explicitly supplies a session limit.
 
-Updating Bot Forge does not remove an override already saved on an existing chat.
+Updating Fabric does not remove an override already saved on an existing chat.
 Raising the profile limit or restarting the gateway does not clear it; on affected
 Hermes versions, `/reset` also inherits the policy. Preserve the old transcript and
 create a genuinely fresh canonical Bot Chat without the flag, using the session
@@ -565,6 +591,8 @@ management supported by your installed Hermes version. Do not edit a live state
 database directly. Replacing the chat does not require deleting the entire Bot profile.
 
 ## Uninstall
+
+For an installation that still uses the legacy `bot-forge` ID, disable and remove it with:
 
 ```bash
 hermes plugins disable bot-forge

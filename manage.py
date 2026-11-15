@@ -74,11 +74,11 @@ def _save_bot_meta(pdir: Path, changes: dict):
 
 
 def _backup(pdir: Path, relpath: str) -> str:
-    """Timestamped copy under <profile>/backups/bot-forge/ so an edit is always undoable."""
+    """Timestamped copy under <profile>/backups/fabric/ so an edit is always undoable."""
     src = pdir / relpath
     if not src.exists():
         return ""
-    dest = pdir / "backups" / "bot-forge" / f"{Path(relpath).name}.{time.strftime('%Y%m%d-%H%M%S')}"
+    dest = pdir / "backups" / "fabric" / f"{Path(relpath).name}.{time.strftime('%Y%m%d-%H%M%S')}"
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dest)
     return str(dest)
@@ -326,7 +326,7 @@ def _export_target(root: Path, requested, default_name: str):
 
 
 def op_export(s: dict, root: Path, settings: dict) -> dict:
-    """Share a Bot. Default: a portable .botforge.json template (design only, secret-scanned).
+    """Share a Bot. Default: a portable .fabric.json template (design only, secret-scanned).
     mode=backup: a full `hermes profile export` for the user's own safekeeping — includes chat history."""
     if __package__:
         from . import portable
@@ -354,7 +354,7 @@ def op_export(s: dict, root: Path, settings: dict) -> dict:
         return {"ok": False, "name": pdir.name, "scan": scan,
                 "error": "the Bot's persona, memory or skills contain what looks like a credential — nothing was "
                          "written. Remove it with update_agent, then share again."}
-    out, err = _export_target(root, s.get("path"), f"{pdir.name}.botforge.json")
+    out, err = _export_target(root, s.get("path"), f"{pdir.name}.fabric.json")
     if err:
         return {"ok": False, "name": pdir.name, "error": err}
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -366,8 +366,8 @@ def op_export(s: dict, root: Path, settings: dict) -> dict:
         else:
             import publish as publish_mod
         published = publish_mod.publish(
-            text + "\n", f"{pdir.name}.botforge.json",
-            f"Hermes Bot: {_bot_meta(pdir).get('title') or pdir.name} — import with Bot Forge")
+            text + "\n", f"{pdir.name}.fabric.json",
+            f"Hermes Bot: {_bot_meta(pdir).get('title') or pdir.name} — import with Fabric")
         if not published.get("ok"):
             return {"ok": False, "name": pdir.name, "path": str(out), "error": published["error"],
                     "note": "the template was written to disk; only publishing the link failed"}
@@ -418,7 +418,7 @@ def strip_outside_routes(spec: dict) -> tuple[dict, list]:
 
 
 def op_import(s: dict, root: Path, settings: dict) -> dict:
-    """Import a Bot: a .botforge.json template (built fresh, like create_agent) or a .tar.gz backup (restored)."""
+    """Import a Bot: a .fabric.json template (built fresh, like create_agent) or a .tar.gz backup (restored)."""
     if __package__:
         from . import publish as publish_mod
     else:
@@ -475,7 +475,7 @@ def op_delete(s: dict, root: Path, settings: dict) -> dict:
     """Delete a Bot permanently. Off unless the operator sets allow_delete, and needs the exact name twice."""
     if not settings.get("allow_delete"):
         return {"ok": False, "error": "deleting Bots is disabled. The user can run `hermes profile delete <name>` "
-                                      "themselves, or enable plugins.entries.bot-forge.settings.allow_delete"}
+                                      "themselves, or enable plugins.entries.fabric.settings.allow_delete"}
     pdir = _require_bot(root, s.get("name"))
     if (s.get("confirm") or "").strip().lower() != pdir.name:
         return {"ok": False, "error": f"confirm must be exactly '{pdir.name}' to delete this Bot"}
@@ -488,7 +488,7 @@ def op_delete(s: dict, root: Path, settings: dict) -> dict:
         if not res.get("ok"):
             return {"ok": False, "name": pdir.name, "deleted": False,
                     "error": f"backup failed, so {pdir.name} was NOT deleted: {res.get('error')}. Fix the export, "
-                             "turn off plugins.entries.bot-forge.settings.backup_before_delete, or run "
+                             "turn off plugins.entries.fabric.settings.backup_before_delete, or run "
                              f"`hermes profile delete {pdir.name}` by hand."}
         backup = res.get("path")
     forge.run(root, "profile", "delete", "-y", pdir.name, timeout=300)

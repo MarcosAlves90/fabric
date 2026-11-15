@@ -33,11 +33,12 @@ if __package__:  # Hermes imports this as a package; the CLI entry points run it
 else:
     import forge
 
-STATE_REL = Path(".bot-forge") / "notify.json"
+STATE_REL = Path(".fabric") / "notify.json"
+LEGACY_STATE_REL = Path(".bot-forge") / "notify.json"
 DEFAULT_PORT = 587
 MAX_PER_HOUR = 4          # a stuck routine must not become a mail storm
 MAX_BODY = 4000
-SUBJECT_PREFIX = "[Bot Forge]"
+SUBJECT_PREFIX = "[Fabric]"
 ENV_KEYS = ("EMAIL_ADDRESS", "EMAIL_PASSWORD", "EMAIL_SMTP_HOST", "EMAIL_SMTP_PORT",
             "EMAIL_HOME_ADDRESS")
 
@@ -111,10 +112,15 @@ def _state_file(root: Path) -> Path:
 
 
 def _load_state(root: Path) -> dict:
-    try:
-        return json.loads(_state_file(root).read_text(errors="ignore", encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    state = {}
+    for path in (Path(root) / LEGACY_STATE_REL, _state_file(root)):
+        try:
+            data = json.loads(path.read_text(errors="ignore", encoding="utf-8"))
+            if isinstance(data, dict):
+                state.update(data)
+        except (OSError, ValueError):
+            pass
+    return state
 
 
 def _rate_ok(root: Path, bot: str, now: float, limit: int = MAX_PER_HOUR) -> bool:
@@ -275,12 +281,14 @@ def operate(spec: dict) -> dict:
 
 
 # ── scheduling ───────────────────────────────────────────────────────────────
-SCRIPT_NAME = "bot-forge-digest.py"
-JOB_NAME = "bot-forge-digest"
+SCRIPT_NAME = "fabric-digest.py"
+JOB_NAME = "fabric-digest"
+LEGACY_SCRIPT_NAME = "bot-forge-digest.py"
+LEGACY_JOB_NAME = "bot-forge-digest"
 
 LAUNCHER = "\n".join([
     "#!/usr/bin/env python3",
-    '"""Written by Bot Forge — prints what is waiting on you, and nothing when nothing is.',
+    '"""Written by Fabric — prints what is waiting on you, and nothing when nothing is.',
     "",
     "Hermes runs this on a schedule with --no-agent, so it costs no model turn and its stdout is",
     "delivered as-is. Silence is the point: a digest that greets you every morning with",
@@ -364,6 +372,18 @@ def schedule(root: Path, when: str = "0 8 * * *", profile: str = "", plugin_dir:
 
     when = " ".join(str(when or "").split()) or "0 8 * * *"
     profile = profile or active_profile(root)
+    jobs_path = scripts_dir(root, profile).parent / "cron" / "jobs.json"
+    try:
+        jobs_data = json.loads(jobs_path.read_text(encoding="utf-8"))
+        jobs = jobs_data if isinstance(jobs_data, list) else jobs_data.get("jobs", [])
+        existing = next((j for j in jobs if isinstance(j, dict) and
+                         j.get("name") in {JOB_NAME, LEGACY_JOB_NAME}), None)
+    except (OSError, ValueError, AttributeError):
+        existing = None
+    if existing:
+        return {"ok": True, "schedule": existing.get("schedule", when),
+                "job": existing.get("name"), "script": existing.get("script", LEGACY_SCRIPT_NAME),
+                "profile": profile or "default", "existing": True}
     path = install_launcher(root, plugin_dir, profile)
     args = ["cron", "create", when, "--name", JOB_NAME, "--no-agent", "--script", path.name]
     run = runner or (lambda a: forge.run(Path(root), *(["-p", profile] if profile else []), *a,

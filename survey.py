@@ -35,8 +35,10 @@ else:
     import forge
     import policy
 
-WORKSPACE_MARKER = "<!-- bot-forge-workspace:v1 -->"
-INDEX_REL = Path(".bot-forge") / "workspace.json"
+WORKSPACE_MARKER = "<!-- fabric-workspace:v1 -->"
+LEGACY_WORKSPACE_MARKERS = ("<!-- bot-forge-workspace:v1 -->",)
+INDEX_REL = Path(".fabric") / "workspace.json"
+LEGACY_INDEX_REL = Path(".bot-forge") / "workspace.json"
 
 MAX_DEPTH = 3
 MAX_PLACES = 240
@@ -382,6 +384,10 @@ def index_file(root: Path) -> Path:
     return Path(root) / INDEX_REL
 
 
+def _legacy_index_file(root: Path) -> Path:
+    return Path(root) / LEGACY_INDEX_REL
+
+
 def _roots_stamp(roots: list) -> list:
     out = []
     for r in roots:
@@ -395,18 +401,16 @@ def _roots_stamp(roots: list) -> list:
 def load_index(root: Path, roots: list, now: float | None = None) -> dict | None:
     """The cached scan, when it is still true for these roots."""
     now = now or time.time()
-    f = index_file(root)
-    if not f.is_file():
-        return None
-    try:
-        data = json.loads(f.read_text(errors="ignore", encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    if now - float(data.get("built") or 0) > INDEX_TTL:
-        return None
-    if data.get("roots") != _roots_stamp(roots):
-        return None
-    return data
+    for f in (index_file(root), _legacy_index_file(root)):
+        if not f.is_file():
+            continue
+        try:
+            data = json.loads(f.read_text(errors="ignore", encoding="utf-8"))
+            if now - float(data.get("built") or 0) <= INDEX_TTL and data.get("roots") == _roots_stamp(roots):
+                return data
+        except (OSError, TypeError, ValueError, AttributeError):
+            continue
+    return None
 
 
 def build_index(root: Path, roots: list, now: float | None = None) -> dict:
@@ -574,7 +578,7 @@ def attach(pdir: Path, result: dict) -> bool:
     try:
         mem.parent.mkdir(exist_ok=True)
         current = mem.read_text(errors="ignore", encoding="utf-8") if mem.is_file() else ""
-        if WORKSPACE_MARKER in current:
+        if any(marker in current for marker in (WORKSPACE_MARKER, *LEGACY_WORKSPACE_MARKERS)):
             return False
         mem.write_text((current.rstrip() + "\n§\n" if current.strip() else "") + block + "\n", encoding="utf-8")
     except OSError:

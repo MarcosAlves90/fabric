@@ -117,7 +117,7 @@ class DeclaredDependencies(unittest.TestCase):
 
     def test_the_manifest_itself_parses(self):
         manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text(encoding="utf-8-sig"))
-        self.assertEqual(manifest.get("name"), "bot-forge")
+        self.assertEqual(manifest.get("name"), "fabric")
         self.assertTrue(manifest.get("provides_tools"))
 
 

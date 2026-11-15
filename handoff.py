@@ -87,7 +87,8 @@ def declared_needs(pdir: Path) -> dict:
     begin without. Both are the Bot's own words, kept where the rest of its traits live.
     """
     try:
-        block = forge.load_yaml(pdir / "profile.yaml").get("bot_forge") or {}
+        profile = forge.load_yaml(pdir / "profile.yaml")
+        block = profile.get("fabric") or profile.get("bot_forge") or profile.get("bot-forge") or {}
         needs = block.get("needs")
     except Exception:
         return {}

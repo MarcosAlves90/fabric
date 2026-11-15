@@ -7,6 +7,7 @@ layer sees nothing at all.
 So these tests are mostly about what is decided *before* it starts — the mode, the directory, the
 environment, the credential scan — plus the plugin saying plainly what it just did.
 """
+import os
 import subprocess
 import tempfile
 import unittest
@@ -217,7 +218,7 @@ class EditingNeverTouchesTheWorkingCopy(unittest.TestCase):
 
     def test_the_branch_is_its_own(self):
         out = self._run()
-        self.assertTrue(out["branch"].startswith("bot-forge/"))
+        self.assertTrue(out["branch"].startswith("fabric/"))
         self.assertIn(out["branch"], self._git("branch", "--list", out["branch"]).stdout)
 
     def test_uncommitted_work_does_not_travel_into_the_job(self):
@@ -308,9 +309,22 @@ class TheWorkIsCommittedSoItCanBeReviewed(unittest.TestCase):
                        capture_output=True)
         subprocess.run(["git", "-C", str(self.repo), "config", "--unset", "user.name"],
                        capture_output=True)
-        out = self._run_with(lambda d: (d / "app.py").write_text("one\nthree\n", encoding="utf-8"))
-        self.assertTrue(out["ok"], out)
-        self.assertTrue(out["changed_anything"])
+        with tempfile.TemporaryDirectory() as home:
+            env = {"PATH": os.environ.get("PATH", ""), "HOME": home}
+            with mock.patch.object(outside.forge, "safe_env", return_value=env):
+                out = self._run_with(lambda d: (d / "app.py").write_text("one\nthree\n", encoding="utf-8"))
+                self.assertTrue(out["ok"], out)
+                self.assertTrue(out["changed_anything"])
+
+    def test_fallback_commit_identity_uses_fabric(self):
+        added = subprocess.CompletedProcess([], 0, "", "")
+        changed = subprocess.CompletedProcess([], 0, " M app.py", "")
+        failed = subprocess.CompletedProcess([], 1, "", "identity required")
+        succeeded = subprocess.CompletedProcess([], 0, "created", "")
+        with mock.patch.object(outside, "git", side_effect=[added, changed, failed, succeeded]) as git:
+            self.assertTrue(outside.commit_worktree(self.repo, "Fabric job: test"))
+        self.assertIn("user.name=Fabric", git.call_args_list[3].args)
+        self.assertIn("user.email=fabric@localhost", git.call_args_list[3].args)
 
 
 class GitRunsWithoutTheUsersEnvironmentOrTheRepositorysHooks(unittest.TestCase):
@@ -334,7 +348,7 @@ class GitRunsWithoutTheUsersEnvironmentOrTheRepositorysHooks(unittest.TestCase):
 
     def test_hooks_are_switched_off(self):
         cmd = self._argv_and_kw("status", "--porcelain")["cmd"]
-        self.assertIn("core.hooksPath=bot-forge-no-hooks-does-not-exist", cmd)
+        self.assertIn("core.hooksPath=fabric-no-hooks-does-not-exist", cmd)
 
     def test_commit_also_passes_no_verify(self):
         """--no-verify covers the one command that runs hooks even with hooksPath set."""

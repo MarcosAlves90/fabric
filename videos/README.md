@@ -7,24 +7,24 @@ not add a permanent copy to every clone.
 
 | project | what it is |
 |---|---|
-| `bot-forge-launch/` | the 16s catalog tour: the Sep 17 claim, the live listing, the install line |
+| `fabric-launch/` | the 16s historical catalog tour source; its old listing is not a Fabric install guide |
 | `bot-reaction/` | the 15s reaction explainer: 👀 on pickup, then the outcome |
 | `bot-spawn/` | the 9s README loop: one sentence becomes a complete Bot |
 
 ## Regenerating
 
+The launch-tour storyboard preserves historical attribution to the former Bot Forge listing. No
+Fabric catalog entry or remote is published, so that live catalog capture cannot be regenerated as
+a Fabric listing yet. Do not use its historical install line as current installation guidance.
+
+To regenerate its local composition after restoring the archived capture assets:
+
 ```bash
-cd videos/bot-forge-launch
-npm install                      # fonts come from @fontsource
-npx hyperframes capture "https://hermes-agent.nousresearch.com/docs/plugins/bot-forge" -o ./catalog-capture
+cd videos/fabric-launch
+npm install
 npx hyperframes check
 npx hyperframes render --quality high --output renders/video.mp4
 ```
-
-The capture is a live page, so a re-render reflects whatever the catalog says that day — which is the
-point. When the listing moves (a new version, a new badge), re-capture rather than editing the frame:
-`02-page.html` maps the plate's own pixel coordinates onto the square, and the ring is positioned
-against the badges row in that space.
 
 ## bot-spawn
 
@@ -63,8 +63,8 @@ Check both after any timeline change: the first and last frames of the render sh
 `docs/demo.gif` is made from the render:
 
 ```bash
-ffmpeg -i renders/<render>.mp4 -vf "fps=13,scale=480:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" -y /tmp/pal.png
-ffmpeg -i renders/<render>.mp4 -i /tmp/pal.png \
+ffmpeg -i renders/<render>.mp4 -vf "fps=13,scale=480:-1:flags=lanczos,palettegen=max_colors=128:stats_mode=diff" -y "$TMPDIR/pal.png"
+ffmpeg -i renders/<render>.mp4 -i "$TMPDIR/pal.png" \
   -lavfi "fps=13,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
   -y ../../docs/demo.gif
 ```

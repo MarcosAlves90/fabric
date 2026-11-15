@@ -30,6 +30,8 @@ class Portable(unittest.TestCase):
         self.assertGreaterEqual(len(found), 5)
         for name, path in found.items():
             tpl = portable.load_template(path)
+            self.assertIn(tpl["format"], {"fabric/template", "bot-forge/template"})
+            self.assertTrue(path.name.endswith(".fabric.json"), name)
             self.assertEqual(portable.scan_text(_json.dumps(tpl))["verdict"], "CLEAN", name)
             self.assertIn(f"You are **{tpl['display_name']}**", tpl["soul_md"], name)
             for r in tpl["routines"]:
@@ -95,6 +97,27 @@ class WorkspaceSurvey(unittest.TestCase):
             top = out["fits"][0]
             self.assertEqual(top["headline"], "X Content Studio", "headline should skip the badge markup")
             self.assertTrue(top["repo"])
+
+    def test_legacy_workspace_memory_is_not_duplicated_and_cache_is_read(self):
+        import json
+        import survey
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp))
+            pdir = self._bot(root, "nova", "Nova", "write social posts")
+            memory = pdir / "memories" / "MEMORY.md"
+            memory.parent.mkdir(parents=True)
+            old_marker = "<!-- bot-forge-workspace:v1 -->"
+            memory.write_text(f"{old_marker}\nold user text", encoding="utf-8")
+            self.assertFalse(survey.attach(pdir, {"fits": [{"name": "x", "path": "/x"}]}))
+            self.assertEqual(memory.read_text(encoding="utf-8"), f"{old_marker}\nold user text")
+            old_index = root / ".bot-forge" / "workspace.json"
+            old_index.parent.mkdir()
+            old_index.write_text(json.dumps({"built": 100, "roots": [], "places": [], "hermes": {}}), encoding="utf-8")
+            current = root / ".fabric" / "workspace.json"
+            current.parent.mkdir()
+            current.write_text(json.dumps({"built": 1, "roots": [], "places": [], "hermes": {}}), encoding="utf-8")
+            self.assertIsNotNone(survey.load_index(root, [], now=101))
+            self.assertEqual(survey.index_file(root), root / ".fabric" / "workspace.json")
 
     def test_it_never_walks_into_dependency_trees(self):
         import survey

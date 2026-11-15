@@ -36,6 +36,17 @@ class ShareAsALink(unittest.TestCase):
         self.assertIn("gist", cmd)
         self.assertIn('"role": "writer"', payload)
 
+    def test_template_format_is_fabric_and_legacy_format_still_loads(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        import portable
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "old.botforge.json"
+            p.write_text(json.dumps({"format": "bot-forge/template", "version": 1}), encoding="utf-8")
+            self.assertEqual(portable.load_template(p)["format"], "bot-forge/template")
+        self.assertEqual(portable.FORMAT, "fabric/template")
+
     def test_no_github_cli_is_a_reason_not_a_crash(self):
         import publish
         self.addCleanup(setattr, publish, "gh_ready", publish.gh_ready)

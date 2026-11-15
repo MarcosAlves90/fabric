@@ -11,8 +11,8 @@ instead of an answer.
 import re
 from pathlib import Path
 
-ACK_MARKER = "<!-- bot-forge-acks:v2 -->"
-LEGACY_MARKERS = ("<!-- bot-forge-acks:v1 -->",)
+ACK_MARKER = "<!-- fabric-acks:v2 -->"
+LEGACY_MARKERS = ("<!-- bot-forge-acks:v2 -->", "<!-- bot-forge-acks:v1 -->")
 
 ACKS = [
     ("👀", "you picked the work up and are starting it"),
@@ -41,7 +41,8 @@ genuinely would, never as a status signal.)
 
 def acks_enabled(pdir: Path) -> bool:
     soul = pdir / "SOUL.md"
-    return soul.exists() and ACK_MARKER in soul.read_text(errors="ignore", encoding="utf-8")
+    return soul.exists() and any(m in soul.read_text(errors="ignore", encoding="utf-8")
+                                 for m in (ACK_MARKER, *LEGACY_MARKERS))
 
 
 def _strip_legacy(soul: str) -> str:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Human-readable, append-only work journals for Bot Forge Bots.
+"""Human-readable, append-only work journals for Fabric Bots.
 
 The journal records observable work: goal, outcome, evidence and next steps. It
 must never contain credentials or private chain-of-thought. Each Bot owns dated
@@ -21,7 +21,8 @@ else:
     import forge
     import portable
 
-JOURNAL_MARKER = "<!-- bot-forge-journal:v1 -->"
+JOURNAL_MARKER = "<!-- fabric-journal:v1 -->"
+LEGACY_JOURNAL_MARKERS = ("<!-- bot-forge-journal:v1 -->",)
 JOURNAL_POLICY = f"""{JOURNAL_MARKER}
 ## Work journal
 - After meaningful work, use `agent_journal` to record the goal, observable result, evidence, and next step.
@@ -32,7 +33,7 @@ JOURNAL_POLICY = f"""{JOURNAL_MARKER}
 
 README = """# Bot work journal
 
-This directory is maintained by Bot Forge. Files are append-only daily Markdown logs.
+This directory is maintained by Fabric. Files are append-only daily Markdown logs.
 
 Entries contain user-visible facts: the goal, outcome, evidence, and next step. They must
 not contain credentials, authentication material, private reasoning, or hidden chain-of-thought.
@@ -78,13 +79,14 @@ def ensure_journal(pdir: Path) -> Path:
 
 def journaling_enabled(pdir: Path) -> bool:
     soul = pdir / "SOUL.md"
-    return soul.exists() and JOURNAL_MARKER in soul.read_text(errors="ignore", encoding="utf-8")
+    return soul.exists() and any(m in soul.read_text(errors="ignore", encoding="utf-8")
+                                 for m in (JOURNAL_MARKER, *LEGACY_JOURNAL_MARKERS))
 
 
 def _drop_orphan_policy(text: str) -> str:
     """Remove journal guidance whose marker is gone, so re-enabling doesn't duplicate it.
 
-    A Bot can end up with the policy text but no marker (an older Bot Forge stripped the marker
+    A Bot can end up with the policy text but no marker (an older Fabric stripped the marker
     line while upgrading a neighbouring block). Without this, enabling again appends a second
     "## Work journal" section.
     """
@@ -93,7 +95,8 @@ def _drop_orphan_policy(text: str) -> str:
         at = text.find("\n" + heading)
         if at < 0:
             return text
-        if JOURNAL_MARKER in text[:at + 1].rsplit("\n\n", 1)[-1]:
+        if any(m in text[:at + 1].rsplit("\n\n", 1)[-1]
+               for m in (JOURNAL_MARKER, *LEGACY_JOURNAL_MARKERS)):
             return text  # a marked block — leave it
         after = at + 1 + len(heading)
         nxt = re.search(r"^(?:##\s|<!--)", text[after:], re.M)
@@ -115,8 +118,14 @@ def enable_journal(pdir: Path) -> dict:
             import manage
 
         backup = manage._backup(pdir, "SOUL.md")
-        text = _drop_orphan_policy(text)
-        soul.write_text((text.rstrip() + "\n\n" if text.strip() else "") + JOURNAL_POLICY.rstrip() + "\n", encoding="utf-8")
+        legacy_present = any(m in text for m in LEGACY_JOURNAL_MARKERS)
+        if legacy_present:
+            for marker in LEGACY_JOURNAL_MARKERS:
+                text = text.replace(marker, JOURNAL_MARKER)
+        else:
+            text = _drop_orphan_policy(text)
+            text = (text.rstrip() + "\n\n" if text.strip() else "") + JOURNAL_POLICY.rstrip() + "\n"
+        soul.write_text(text, encoding="utf-8")
     return {"enabled": True, "changed": changed, "path": str(folder), "backup": backup or None}
 
 

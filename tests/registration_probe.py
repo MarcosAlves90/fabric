@@ -23,14 +23,14 @@ repo, home = map(Path, sys.argv[1:])
 
 # A believable Hermes home, so register() reads real files rather than the user's own.
 (home / "profiles" / "quill").mkdir(parents=True, exist_ok=True)
-(home / "config.yaml").write_text("plugins:\n  enabled: [bot-forge]\n", encoding="utf-8")
+(home / "config.yaml").write_text("plugins:\n  enabled: [fabric]\n", encoding="utf-8")
 (home / "profiles" / "quill" / "config.yaml").write_text("model:\n  default: test\n", encoding="utf-8")
 (home / "profiles" / "quill" / "SOUL.md").write_text("Synthetic Bot\n", encoding="utf-8")
 
 parent = types.ModuleType("hermes_plugins")
 parent.__path__ = []
 sys.modules["hermes_plugins"] = parent
-name = "hermes_plugins.bot_forge"
+name = "hermes_plugins.fabric"
 spec = importlib.util.spec_from_file_location(
     name, repo / "__init__.py", submodule_search_locations=[str(repo)])
 plugin = importlib.util.module_from_spec(spec)
@@ -44,6 +44,7 @@ class Context:
 
     def __init__(self):
         self.tools = {}
+        self.toolsets = set()
         self.hooks = []
         self.skills = []
         self.cli = {}
@@ -57,6 +58,7 @@ class Context:
             assert kw.get(field), f"{kw.get('name')!r} registered without {field}"
         assert callable(kw["handler"]), f"{kw['name']} handler is not callable"
         self.tools[kw["name"]] = kw["handler"]
+        self.toolsets.add(kw["toolset"])
 
     def register_hook(self, event, handler):
         assert callable(handler), f"{event} hook is not callable"
@@ -74,6 +76,8 @@ class Context:
 def check(plugin_dir, ctx):
     """Every tool and hook the manifest advertises must have actually been registered."""
     manifest = yaml.safe_load((plugin_dir / "plugin.yaml").read_text(encoding="utf-8"))
+    expected_name = {"marks": "fabric-marks", "sentinel": "fabric-sentinel"}.get(plugin_dir.name, "fabric")
+    assert manifest["name"] == expected_name, f"expected {expected_name!r}, got {manifest['name']!r}"
 
     declared_tools = set(manifest.get("provides_tools") or [])
     assert set(ctx.tools) == declared_tools, (
@@ -101,11 +105,12 @@ finally:
     forge.default_root = original
 
 check(repo, ctx)
+assert ctx.toolsets == {"fabric"}, f"expected Fabric toolset, got {sorted(ctx.toolsets)}"
 
 # The CLI command is the path that broke twice: registered, but with a handler that raised the
 # moment it ran, because its import worked only inside the repo. Register it, then run it.
-assert "bot-forge-doctor" in ctx.cli, (
-    "bot-forge-doctor was not registered; a bare `except Exception` used to hide this")
+assert "fabric-doctor" in ctx.cli, (
+    "fabric-doctor was not registered; a bare `except Exception` used to hide this")
 
 # Skills are a promise too: whatever ships under skills/ should be offered.
 on_disk = sorted(c.name for c in (repo / "skills").iterdir()
@@ -114,7 +119,7 @@ assert sorted(ctx.skills) == on_disk, f"registered skills {sorted(ctx.skills)} !
 
 # The companion ships inside every Bot and must register the same two hooks under the same load
 # shape. It has no tools on purpose: a reaction hook should not widen what a Bot can do.
-marks_name = "hermes_plugins.bot_forge_marks"
+marks_name = "hermes_plugins.fabric_marks"
 marks_spec = importlib.util.spec_from_file_location(
     marks_name, repo / "marks" / "__init__.py",
     submodule_search_locations=[str(repo / "marks")])

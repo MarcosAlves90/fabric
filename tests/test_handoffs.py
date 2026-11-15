@@ -279,6 +279,14 @@ class WhatABotNeedsBeforeItCanStart(unittest.TestCase):
 
     NEEDS = {"draft": "the text you want reviewed", "deadline": "when it has to ship"}
 
+    def test_fabric_metadata_is_written_and_legacy_metadata_is_still_read(self):
+        forge.write_bot_meta(self.pdir, "Nova", "Writes", "sun", needs=self.NEEDS)
+        meta = forge.load_yaml(self.pdir / "profile.yaml")
+        self.assertEqual(meta["fabric"]["needs"], self.NEEDS)
+        self.assertNotIn("bot_forge", meta)
+        self._declare(self.NEEDS)
+        self.assertFalse(self._hand()["ok"])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

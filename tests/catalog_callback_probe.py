@@ -15,7 +15,7 @@ root = root / 'synthetic-hermes'
 root.mkdir()
 bot = root / 'profiles' / 'quill'
 bot.mkdir(parents=True)
-(root / 'config.yaml').write_text('plugins:\n  enabled: [bot-forge]\n', encoding="utf-8")
+(root / 'config.yaml').write_text('plugins:\n  enabled: [fabric]\n', encoding="utf-8")
 (bot / 'config.yaml').write_text('model:\n  default: test\n', encoding="utf-8")
 (bot / 'SOUL.md').write_text('Synthetic Bot\n', encoding="utf-8")
 (root / '.env').write_text('EMAIL_SMTP_HOST=smtp.example.test\nEMAIL_ADDRESS=sender@example.test\n'
@@ -23,7 +23,7 @@ bot.mkdir(parents=True)
 parent = types.ModuleType('hermes_plugins')
 parent.__path__ = []
 sys.modules['hermes_plugins'] = parent
-name = 'hermes_plugins.bot_forge'
+name = 'hermes_plugins.fabric'
 spec = importlib.util.spec_from_file_location(name, repo / '__init__.py',
                                             submodule_search_locations=[str(repo)])
 plugin = importlib.util.module_from_spec(spec)
@@ -103,7 +103,7 @@ with mock.patch.object(forge, 'default_root', return_value=root), \
             mail = next(c for c in report['checks'] if c['check'] == 'mail')
             stream = io.StringIO()
             with contextlib.redirect_stdout(stream):
-                ctx.cli['bot-forge-doctor'](types.SimpleNamespace(json=True))
+                ctx.cli['fabric-doctor'](types.SimpleNamespace(json=True))
             cli_report = json.loads(stream.getvalue())
             assert next(c for c in cli_report['checks'] if c['check'] == 'mail') == mail
             if settings.get('notify_email') is False or settings.get('notify_blocked') is False:

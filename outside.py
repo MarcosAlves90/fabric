@@ -92,7 +92,7 @@ def compose(task: str, context: str, may_edit: bool) -> str:
 # commit the job's work. So every git call here gets the same scrubbed environment the agent gets,
 # and hooks are switched off: an unreachable hooksPath (portable — /dev/null is not a directory on
 # Windows) plus --no-verify on the one command that would run them anyway.
-NO_HOOKS = ("-c", "core.hooksPath=bot-forge-no-hooks-does-not-exist")
+NO_HOOKS = ("-c", "core.hooksPath=fabric-no-hooks-does-not-exist")
 
 
 def git(root, *argv, timeout: int = 300):
@@ -174,7 +174,7 @@ def open_worktree(root: Path, job: str) -> tuple[Path, str]:
     commit, so it also does not carry uncommitted work across — what the agent sees is what is
     committed, which is the only state anyone can review a diff against afterwards.
     """
-    branch = f"bot-forge/{job}"
+    branch = f"fabric/{job}"
     path = root.parent / f"{root.name}--{job}"
     out = git(root, "worktree", "add", "-b", branch, str(path), "HEAD")
     if out.returncode != 0:
@@ -198,7 +198,7 @@ def commit_worktree(path: Path, message: str) -> bool:
     # machine with no global git config still produces a reviewable commit.
     out = git(path, "commit", "-m", message)
     if out.returncode != 0:
-        out = git(path, "-c", "user.name=bot-forge", "-c", "user.email=bot-forge@localhost",
+        out = git(path, "-c", "user.name=Fabric", "-c", "user.email=fabric@localhost",
                   "commit", "-m", message)
     if out.returncode != 0:
         raise RuntimeError((out.stderr or "could not commit the job's changes").strip()[:240])
@@ -294,7 +294,7 @@ def delegate(spec: dict, runner=None) -> dict:
              "status": "completed" if reply else "failed",
              "summary": f"Ran in {workdir} in {'edit' if may_edit else 'plan'} mode. "
                         f"Claude Code is not a Hermes Bot: Hermes did not dispatch its tools and "
-                        f"Bot Forge Sentinel did not see them.",
+                        f"Fabric Sentinel did not see them.",
              "evidence": [f"delegated by {sender}"], "next": "check what it changed"}
     written = {"written": False, "reason": "journal not enabled"}
     pdir = root / "profiles" / sender
@@ -309,7 +309,7 @@ def delegate(spec: dict, runner=None) -> dict:
     changed = None
     if worktree:
         try:
-            changed = commit_worktree(worktree, f"bot-forge job: {task[:90]}")
+            changed = commit_worktree(worktree, f"Fabric job: {task[:90]}")
         except Exception as exc:
             return {"ok": False, "worktree": str(worktree), "branch": branch,
                     "error": f"the job ran but its changes could not be committed, so they are "

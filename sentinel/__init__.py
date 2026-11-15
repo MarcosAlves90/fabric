@@ -1,4 +1,4 @@
-"""bot-forge-sentinel — a Bot's reach, decided outside the model.
+"""fabric-sentinel — a Bot's reach, decided outside the model.
 
 Hooks only, no tools. A policy layer must not widen what a Bot can do, which is the same rule
 the acknowledgement companion in marks/ follows.

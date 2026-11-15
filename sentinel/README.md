@@ -1,4 +1,4 @@
-# bot-forge-sentinel
+# fabric-sentinel
 
 A Bot's reach, decided outside the model.
 
@@ -38,13 +38,13 @@ a policy layer must not widen what a Bot can do.
 
 ## Policy
 
-Per Bot, in that profile's `config.yaml`, under the key Hermes reads (`plugins.entries.bot-forge-sentinel.settings` — a top-level `bot-forge-sentinel:` key is not read, see #86):
+Per Bot, in that profile's `config.yaml`, under the key Hermes reads (`plugins.entries.fabric-sentinel.settings` — a top-level `fabric-sentinel:` key is not read, see #86):
 
 ```yaml
 plugins:
-  enabled: [bot-forge-sentinel]
+  enabled: [fabric-sentinel]
   entries:
-    bot-forge-sentinel:
+    fabric-sentinel:
       settings:
         refuse: [delete_profile]  # never, whatever is said in the moment
         ask:    [send_email]      # always reach the human gate
@@ -64,7 +64,7 @@ A tool-name gate cannot say that, so limits name the argument and the values tha
 ```yaml
 plugins:
   entries:
-    bot-forge-sentinel:
+    fabric-sentinel:
       settings:
         limits:
           send_email:
@@ -89,7 +89,7 @@ not a way to skip the check on `to`.
 If the policy cannot be read — missing, malformed, or the config call raises — the answer is
 **refuse**, with a message saying why. The user sees a refusal rather than silence.
 
-This is the one place Bot Forge's usual "never let it stop the plugin loading" instinct is
+This is the one place Fabric's usual "never let it stop the plugin loading" instinct is
 wrong. Adoption failing open is fine. Enforcement failing open is not.
 
 ## What it is not

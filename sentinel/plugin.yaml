@@ -1,5 +1,5 @@
 manifest_version: 1
-name: bot-forge-sentinel
+name: fabric-sentinel
 version: 0.1.0
 description: >-
   Decide what a Bot may actually do, outside the model. A Bot's "ask first" rules live in its

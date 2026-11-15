@@ -85,11 +85,11 @@ def card(x, y, c):
          f'<rect width="{CW}" height="{CH}" rx="26" fill="url(#card)" stroke="#232C42" stroke-width="2"/>']
     if c.get("brand"):
         s += [f'<g transform="translate(36,36) scale(0.205)"><rect width="512" height="512" rx="114" fill="#0E1524"/>{BOT}</g>',
-              '<text x="36" y="188" font-size="46" font-weight="bold" fill="url(#skin)" letter-spacing="-1">Bot Forge</text>',
+              '<text x="36" y="188" font-size="46" font-weight="bold" fill="url(#skin)" letter-spacing="-1">Fabric</text>',
               '<text x="36" y="228" font-size="23" font-weight="bold" fill="#E2E8F0">Say it. It gets built.</text>',
-              '<text x="36" y="272" font-size="20" fill="#8FA1BC">In the Hermes plugin catalog. Open source, MIT.</text>',
+              '<text x="36" y="272" font-size="20" fill="#8FA1BC">Open source, MIT · Fabric release pending</text>',
               '<rect x="36" y="292" width="430" height="44" rx="12" fill="#0B1220" stroke="#2A3550" stroke-width="2"/>',
-              '<text x="56" y="321" font-size="19" font-family="JetBrainsMono Nerd Font, DejaVu Sans Mono" fill="#7DD3FC">hermes plugins install bot-forge</text>']
+              '<text x="56" y="321" font-size="19" font-family="JetBrainsMono Nerd Font, DejaVu Sans Mono" fill="#7DD3FC">Fabric · not yet published</text>']
     else:
         s += ['<rect x="36" y="34" width="66" height="66" rx="18" fill="#141D30" stroke="#28334D" stroke-width="2"/>',
               f'<g transform="translate(47,45)" fill="url(#skin)">{ICONS[c["icon"]]}</g>',

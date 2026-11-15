@@ -1,4 +1,4 @@
-name: bot-forge
+name: fabric
 version: 0.27.0
 description: Say "make me a <role>" and your Hermes agent builds a complete, working Bot — name, face, SOUL.md, memory, tools, skills, routines, Bot Chat and gateway — tested and rolled back on failure.
 author: Bikash Joshi
@@ -120,7 +120,7 @@ config_schema:
       plugin created — one made through Hermes' New Agent dialog or `hermes profile create` behaves
       the same. When true, runs on plugin load, installs the hook into each profile and switches
       Hermes' own Message Reactions setting on there, and does nothing when everything is already
-      in place. Off by default: Bot Forge never edits profiles it did not create unless asked.
+      in place. Off by default: Fabric never edits profiles it did not create unless asked.
   inherit_plugins:
     type: list
     default: []
@@ -128,7 +128,7 @@ config_schema:
       Plugins from the root profile to copy into every new Bot and enable there, by name; ["all"] for
       every plugin enabled on the root profile. Off by default: `hermes profile create --clone-from`
       copies the root's plugins.enabled list but not the plugin directories, so without this a root
-      plugin is enabled-but-inert in a Bot (check_agents flags those). Bot Forge itself is never
+      plugin is enabled-but-inert in a Bot (check_agents flags those). Fabric itself is never
       copied, and no .env or credential file travels with a plugin. create_agent's own
       inherit_plugins argument overrides this per Bot. Under ["all"], a plugin that declares
       requires_env is skipped and must be named: those are the ones carrying reach into an account,
@@ -153,7 +153,7 @@ config_schema:
     type: bool
     default: true
     description: >-
-      Ship the policy layer (bot-forge-sentinel) into each new Bot, so the `approvals` written
+      Ship the policy layer (fabric-sentinel) into each new Bot, so the `approvals` written
       into its SOUL.md are enforced at the tool call rather than left to the model to remember.
       A Bot that declared no approvals gets the layer with no categories on. Refusals and
       approval prompts come from Hermes' own gate; the policy lives in that Bot's config.yaml
