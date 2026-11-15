@@ -398,6 +398,7 @@ class InheritedPlugins(unittest.TestCase):
     def _spec(self, root, **extra):
         return {"hermes_root": str(root), "role": "Editor", "display_name": "Marlow", "one_job": "edits",
                 "soul_md": "# Marlow — Editor\n\nYou are **Marlow**.\n",
+                "sandbox": "local",
                 "settings": {"install_gateway": False, "suggest_connectors": False, "workspace_survey": False},
                 **extra}
 

@@ -81,6 +81,9 @@ def _creation_model_error(spec: dict) -> str:
 
 
 def create_agent(args: dict, settings: dict | None = None, **kwargs) -> str:
+    problem = forge.sandbox_choice_error(args)
+    if problem:
+        return json.dumps({"ok": False, "error": problem})
     problem = _creation_model_error(args)
     if problem:
         return json.dumps({"ok": False, "error": problem})
@@ -119,10 +122,13 @@ def _manage(op: str, args: dict, settings: dict | None = None) -> str:
 
 
 def create_team(args: dict, settings: dict | None = None, **kwargs) -> str:
-    # Check every explicit route before building the lead or any member.
-    specs = [args.get("lead")] + list(args.get("members") or [])
+    # Check every new profile's sandbox and explicit route before building the lead or any member.
+    specs = ([args.get("lead")] if args.get("lead") else []) + list(args.get("members") or [])
     for spec in specs:
         if isinstance(spec, dict):
+            problem = forge.sandbox_choice_error(spec)
+            if problem:
+                return json.dumps({"ok": False, "error": problem})
             problem = _creation_model_error(spec)
             if problem:
                 return json.dumps({"ok": False, "error": problem})
