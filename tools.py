@@ -389,7 +389,7 @@ def ask_agent(args: dict, **kwargs) -> str:
     try:
         limit = forge.reading_only_args(args.get("reading_only"))
         wait = forge.within_deadline(900, root)
-        p = subprocess.run(["hermes", "-p", name, "chat", "-Q", "--max-turns", "30",
+        p = subprocess.run(["hermes", "-p", name, "chat", "-Q",
                             *limit, "-q", message],
                            capture_output=True, text=True, encoding="utf-8",
                            errors="replace", stdin=subprocess.DEVNULL, timeout=wait, env=env)

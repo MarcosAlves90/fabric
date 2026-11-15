@@ -42,7 +42,6 @@ else:
 
 MAX_TASK = 2_000
 MAX_CONTEXT = 8_000
-MAX_TURNS = 30
 CHAT_TIMEOUT = 840  # the tool's own subprocess timeout is 960s; leave room to write the record
 REPLY_KEEP = 4_000
 
@@ -269,7 +268,7 @@ def handoff(s: dict, now: datetime | None = None) -> dict:
     path = _write_record(pdir, record)
 
     try:
-        ok, reply = forge.bot_chat(root, to, message, max_turns=MAX_TURNS,
+        ok, reply = forge.bot_chat(root, to, message,
                                timeout=forge.within_deadline(CHAT_TIMEOUT, root),
                                env=forge.safe_env(root), reading_only=reading_only)
     except Exception as exc:  # the CLI missing, a timeout — the record stays, marked as undelivered

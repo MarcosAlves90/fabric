@@ -44,6 +44,18 @@ class Handoff(unittest.TestCase):
         return {"to": "nova", "task": "Draft Thursday's launch thread", "from": "marshal",
                 "context": "Audience: indie devs. Three posts, the hook first.", "hermes_root": str(root), **extra}
 
+    def test_handoff_inherits_profile_iteration_limit(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            _bot(root, "marshal", "Marshal")
+            _bot(root, "nova", "Nova")
+            with mock.patch.object(forge, "bot_chat", return_value=(True, "✅ done")) as bot_chat, \
+                 mock.patch.object(handoff, "_journal", return_value={"written": False}):
+                handoff.handoff(self._spec(root))
+            kwargs = bot_chat.call_args.kwargs
+            self.assertNotIn("max_turns", kwargs,
+                             msg="handoff must inherit the profile iteration limit")
+
     def test_completed_handoff_is_recorded_and_journaled_on_both_sides(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))

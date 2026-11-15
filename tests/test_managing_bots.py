@@ -15,6 +15,16 @@ from support import forge, make_root, manage, portable, team, tools, yaml
 
 
 class AskAgentEnvironment(unittest.TestCase):
+    def test_ask_agent_inherits_profile_iteration_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp), profiles=("kairo",))
+            with mock.patch.object(tools, "hermes_root", return_value=root), \
+                 mock.patch.object(tools.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 0, "done", "")) as run:
+                tools.ask_agent({"name": "kairo", "message": "Review only"})
+            self.assertNotIn("--max-turns", run.call_args.args[0],
+                             msg="ask_agent must inherit the profile iteration limit")
+
     def test_profile_root_and_secrets_are_not_inherited(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_root(Path(tmp), profiles=("kairo",))
