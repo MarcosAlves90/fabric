@@ -9,7 +9,7 @@ MODEL = {
     "type": "object",
     "description": (
         "Optional explicit model route, applied before the Bot's first model call. "
-        "Use only an authorized model/provider; omit to retain existing inheritance. "
+        "Use only an authorized model/provider; when omitted, inherit the selected base profile's model. "
         "Credentials belong in Hermes provider configuration, never here."
     ),
     "properties": {
@@ -34,13 +34,19 @@ CREATE_AGENT = {
         "material ambiguity or missing authority. Apply the bundled skill 'fabric:fabric'. "
         "Write a job-specific SOUL.md in soul_md and use template when helpful. The tool provisions "
         "identity, memory, tools, skills and optional routines, tries a Bot Chat introduction, and "
-        "handles the existing gateway topology without forcing a separate service. Creation failures "
+        "handles the existing gateway topology without forcing a separate service. Name an existing "
+        "base_profile; if the user has not named one, ask instead of inferring the calling or default profile. "
+        "Native full-profile cloning also clones credentials. An explicit model route overrides the base model. "
+        "Creation failures "
         "attempt cleanup; authentication and gateway readiness can remain pending. Takes 1-3 minutes. "
         "Report the actual intro, warning and gateway result instead of assuming the Bot is live."
     ),
     "parameters": {
         "type": "object",
         "properties": {
+            "base_profile": {"type": "string", "minLength": 1, "description": (
+                "existing Hermes profile to clone in full, including credentials. The user must name it; "
+                "if they have not, ask rather than using the calling or default profile.")},
             "template": {"type": "string", "description": (
                 "start from a template instead of designing from scratch: a bundled one — 'chief-of-staff', "
                 "'morning-brief', 'research-digest', 'competitor-watcher', 'engineering-outer-loop' — or a path to a "
@@ -91,8 +97,8 @@ CREATE_AGENT = {
             "reports_to": {"type": "string", "description": (
                 "profile name of the Bot it escalates scope and priority calls to (its chief of staff), e.g. 'ceo'")},
             "inherit_plugins": {"type": "array", "items": {"type": "string"}, "description": (
-                "plugins installed on the user's main profile to copy into this Bot, by name (e.g. a persona or "
-                "style plugin the user wants every Bot to have), or ['all'] for every plugin enabled there. Off "
+                "plugins installed on the selected base profile to copy into this Bot, by name (e.g. a persona or "
+                "style plugin the user wants this Bot to have), or ['all'] for every plugin enabled there. Off "
                 "by default: a Bot gets only the plugins it was asked for. Fabric itself is never copied, and "
                 "no credentials travel with a plugin. Only pass it when the user asked for a plugin in the Bot.")},
             "routines": {
@@ -111,7 +117,7 @@ CREATE_AGENT = {
                 },
             },
         },
-        "required": [],
+        "required": ["base_profile"],
     },
 }
 
@@ -375,7 +381,9 @@ CREATE_TEAM = {
         "A request for a team does not imply a new profile for every specialty or a fixed team size. "
         "Use lead_name for an existing lead; put only justified NEW profiles in members. "
         "Explicit authorized profile creation stays direct. Apply skill 'fabric:fabric'. "
-        "Each new lead/member may have an explicit model route; omission preserves inheritance. "
+        "Name one existing top-level base_profile for every newly built lead/member; if the user has not named one, "
+        "ask instead of inferring the calling or default profile. Native full-profile cloning also clones "
+        "credentials. Explicit model routes for new lead/members override the base model. "
         "Up to 6 members are built one at a time; failure cleanup is per Bot, not a team transaction. "
         "Report each member's warning and gateway status. Takes several minutes; say so before calling."
     ),
@@ -383,6 +391,10 @@ CREATE_TEAM = {
         "type": "object",
         "properties": {
             "team": {"type": "string", "description": "short team label, e.g. 'Content'"},
+            "base_profile": {"type": "string", "minLength": 1, "description": (
+                "one existing Hermes profile to clone in full, including credentials, for every newly built "
+                "lead/member. The user must name it; if they have not, ask rather than using the calling or "
+                "default profile.")},
             "lead": {
     "type": "object",
     "properties": {
@@ -424,7 +436,7 @@ CREATE_TEAM = {
     "required": ["display_name", "role", "one_job", "soul_md", "toolsets"],
 }},
         },
-        "required": ["members"],
+        "required": ["base_profile", "members"],
     },
 }
 

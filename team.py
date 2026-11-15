@@ -29,7 +29,7 @@ MAX_MEMBERS = 6
 
 def _build(member: dict, base: dict, reports_to: str = "") -> dict:
     spec = {**member, "hermes_root": base["hermes_root"], "settings": base["settings"],
-            "launch_profile": base.get("launch_profile") or "default"}
+            "base_profile": base["base_profile"]}
     if reports_to and not spec.get("reports_to"):
         spec["reports_to"] = reports_to
     return forge.forge(spec)
@@ -49,8 +49,13 @@ def _tell_lead(root: Path, lead_id: str, team: str, roster: list):
 
 def build_team(s: dict) -> dict:
     root = Path(s.get("hermes_root") or forge.default_root())
+    try:
+        base_profile = s["base_profile"]
+        forge.resolve_base_profile(root, base_profile)
+    except (KeyError, ValueError) as exc:
+        return {"ok": False, "error": str(exc) if isinstance(exc, ValueError) else "team needs an explicit base_profile"}
     base = {"hermes_root": str(root), "settings": s.get("settings") or {},
-            "launch_profile": s.get("launch_profile") or "default"}
+            "base_profile": base_profile}
     members = [m for m in (s.get("members") or []) if isinstance(m, dict)][:MAX_MEMBERS]
     if not members:
         return {"ok": False, "error": "a team needs at least one member (list them in `members`)"}

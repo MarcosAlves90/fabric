@@ -246,15 +246,16 @@ def needs_credentials(source: Path) -> list:
     return [str(e) for e in declared if str(e).strip()] if isinstance(declared, (list, tuple)) else []
 
 
-def select_inherited(root: Path, wanted) -> tuple:
+def select_inherited(root: Path, wanted, source_profile: Path | None = None) -> tuple:
     """Resolve an ``inherit_plugins`` value into (name -> source dir, skipped reasons).
 
-    ``True`` means every plugin enabled on the root profile that has a directory there; a list names
+    ``True`` means every plugin enabled on the source profile that has a directory there; a list names
     them one by one. Fabric itself and its companion are never inherited (the companion is installed
     on its own path, at the current version). A name that cannot be carried is returned in the
     skipped list with its reason, never dropped silently."""
     root = Path(root)
-    available = plugin_dirs(root)
+    source_profile = Path(source_profile) if source_profile is not None else root
+    available = plugin_dirs(source_profile)
     if isinstance(wanted, str):
         wanted = [wanted]
     if isinstance(wanted, (list, tuple)):
@@ -263,7 +264,7 @@ def select_inherited(root: Path, wanted) -> tuple:
             wanted, names = True, []
     blanket = wanted is True
     if wanted is True:
-        names = [n for n in enabled_plugins(root) if n in available]
+        names = [n for n in enabled_plugins(source_profile) if n in available]
     elif not isinstance(wanted, (list, tuple)):
         return {}, []
     chosen, skipped, seen = {}, [], set()
@@ -276,7 +277,7 @@ def select_inherited(root: Path, wanted) -> tuple:
                 (source and _manifest_name(source) in {MARKS_NAME, LEGACY_MARKS_NAME, SENTINEL_NAME, LEGACY_SENTINEL_NAME}):
             skipped.append({"name": name, "reason": "Fabric installs its companions directly"})
         elif source is None:
-            skipped.append({"name": name, "reason": "not installed under the root profile's plugins/"})
+            skipped.append({"name": name, "reason": "not installed under the source profile's plugins/"})
         elif is_forge_itself(source):
             skipped.append({"name": name, "reason": "Fabric is never copied into a Bot"})
         elif source.resolve() in {p.resolve() for p in chosen.values()}:
@@ -309,9 +310,9 @@ def install_plugin(pdir: Path, name: str, source: Path, folder: str | None = Non
             "path": str(target)}
 
 
-def inherit_plugins(root: Path, pdir: Path, wanted) -> dict:
-    """Carry the root profile's user plugins into a new Bot (opt-in, see ``inherit_plugins``)."""
-    chosen, skipped = select_inherited(root, wanted)
+def inherit_plugins(root: Path, pdir: Path, wanted, source_profile: Path | None = None) -> dict:
+    """Carry a profile's user plugins into a new Bot (opt-in, see ``inherit_plugins``)."""
+    chosen, skipped = select_inherited(root, wanted, source_profile=source_profile)
     installed, failed = [], []
     for name, source in chosen.items():
         out = install_plugin(pdir, name, source)

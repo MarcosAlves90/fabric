@@ -15,9 +15,9 @@ Spec ("role" required; everything else gets a sane default):
   "routines": [{"schedule": "0 9 * * 1", "prompt": "...", "name": "weekly-ideas"}],
   "avatar_kind": "cloud",
   "model": {...},                        # optional explicit model block
-  "launch_profile": "ceo",               # set by the plugin: whose model to inherit
+  "launch_profile": "ceo",               # legacy/template imports without an explicit base; selected-base creation uses base_profile
   "hermes_root": "/home/me/.hermes",     # set by the plugin
-  "inherit_plugins": true,               # or ["name", ...]: copy root-profile plugins into the Bot (default off)
+  "inherit_plugins": true,               # or ["name", ...]: copy source-profile plugins into the Bot (default off)
   "settings": {...}                      # plugin settings (see plugin.yaml config_schema)
 }
 
@@ -97,6 +97,31 @@ COOL_NAMES = ["Nova", "Quill", "Atlas", "Vega", "Orion", "Juno", "Onyx", "Sable"
 NOISE = ("hermes update", "Gateways may", "hermes gateway restart", "tirith security scanner")
 ASSISTANT_NAMING = re.compile(r"\b(call|calls|called|name|names|named)\b.{0,40}\bassistant\b|"
                               r"\bassistant\b.{0,40}\b(name|named|called)\b", re.I)
+def resolve_base_profile(root: Path, profile_name: str) -> Path:
+    """Resolve an existing, in-root Hermes profile selected as a creation base."""
+    if not isinstance(profile_name, str) or (profile_name != "default" and
+                                              not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", profile_name)):
+        raise ValueError("invalid base_profile")
+    try:
+        root = Path(root).resolve(strict=True)
+        if profile_name == "default":
+            resolved = root
+        else:
+            profiles = (root / "profiles").resolve(strict=True)
+            profiles.relative_to(root)
+            if profiles.parent != root:
+                raise ValueError
+            resolved = (profiles / profile_name).resolve(strict=True)
+            resolved.relative_to(root)
+            if resolved.parent != profiles:
+                raise ValueError
+    except (OSError, RuntimeError, ValueError):
+        raise ValueError("base_profile must name an existing profile inside the Hermes root") from None
+    if not (resolved / "config.yaml").is_file():
+        raise ValueError("base_profile must name an existing profile with config.yaml")
+    return resolved
+
+
 def default_root() -> Path:
     """Hermes root when the caller didn't pass one (Windows keeps it under LOCALAPPDATA)."""
     if os.name == "nt":
@@ -774,6 +799,7 @@ def disabled_skills(skills_dir: Path, keep_categories: set) -> set:
 # ── main ─────────────────────────────────────────────────────────────────────
 def forge(s: dict) -> dict:
     root = Path(s.get("hermes_root") or default_root())
+    explicit_base = s.get("base_profile")
     settings = {**DEFAULT_SETTINGS, **{k: v for k, v in (s.get("settings") or {}).items() if v is not None}}
     if s.get("template"):
         if __package__:
@@ -793,6 +819,15 @@ def forge(s: dict) -> dict:
                     "scan": scan, "rolled_back": False}
         s = {**{k: v for k, v in tpl.items() if k not in ("format", "version")},
              **{k: v for k, v in s.items() if v not in (None, "", [])}}
+    if explicit_base is None:
+        s.pop("base_profile", None)
+        base_dir = None
+    else:
+        try:
+            base_dir = resolve_base_profile(root, explicit_base)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc), "rolled_back": False}
+        s["base_profile"] = explicit_base
     if not s.get("role"):
         return {"ok": False, "error": "spec needs at least 'role'"}
     # Two Bots with the same job is what makes a roster useless. Check before building, not after.
@@ -894,8 +929,8 @@ def forge(s: dict) -> dict:
     pdir = root / "profiles" / profile_id
     created = False
     try:
-        # 1. profile (config, keys, skills from the root profile; messaging channels left behind)
-        run(root, "profile", "create", profile_id, "--clone-from", "default", "--description", description,
+        # 1. profile (config, keys, skills from the selected base profile; messaging channels left behind)
+        run(root, "profile", "create", profile_id, "--clone-from", explicit_base or "default", "--description", description,
             timeout=600)
         created = True
         if not (pdir / "config.yaml").exists():
@@ -941,15 +976,16 @@ def forge(s: dict) -> dict:
                         else "installed, no categories on (this Bot declared no approvals)"
                         ) if guard.get("ok") else f"not installed: {guard.get('error')}"
 
-        # `profile create --clone-from` copies config.yaml — with the root's plugins.enabled list — but not
-        # the plugin directories, so a user plugin on the root profile is enabled-but-inert in the Bot. Opt in
-        # (the setting, or the call) to carry them across; Fabric itself and credentials never travel.
+        # `profile create --clone-from` copies config.yaml — with the base profile's plugins.enabled list — but not
+        # the plugin directories, so a user plugin on the base profile is enabled-but-inert in the Bot. Opt in
+        # (the setting, or the call) to carry them across; plugin credential files do not travel with copied
+        # plugin directories. Native profile cloning itself carries the base profile's credentials.
         plugins = None
         wanted = s["inherit_plugins"] if s.get("inherit_plugins") is not None else settings.get("inherit_plugins")
         if wanted not in (None, False, [], ""):
             import companion
 
-            carried = companion.inherit_plugins(root, pdir, wanted)
+            carried = companion.inherit_plugins(root, pdir, wanted, source_profile=base_dir)
             if carried["failed"]:
                 raise RuntimeError("could not inherit plugins: "
                                    + "; ".join(f["error"] for f in carried["failed"]))
@@ -1016,7 +1052,8 @@ def forge(s: dict) -> dict:
         if s.get("model"):
             cfg["model"] = s["model"]
         elif settings["inherit_model"]:
-            launch_model = load_yaml((root if launch == "default" else root / "profiles" / launch) / "config.yaml").get("model")
+            model_source = base_dir or (root if launch == "default" else root / "profiles" / launch)
+            launch_model = load_yaml(model_source / "config.yaml").get("model")
             if isinstance(launch_model, dict) and launch_model.get("default"):
                 cfg["model"] = launch_model
         if sandbox not in ("", "local"):  # the Bot's shell runs in its own container, not on this machine

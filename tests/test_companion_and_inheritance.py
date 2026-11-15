@@ -416,6 +416,25 @@ class InheritedPlugins(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in (root / "profiles" / "marlow" / "plugins").iterdir()),
                              ["fabric-marks", "fabric-sentinel"])
 
+    def test_create_agent_inherits_plugins_from_the_selected_base_profile(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = self._root(t)
+            base = root / "profiles" / "chosen-base"
+            plugin = base / "plugins" / "base-only"
+            plugin.mkdir(parents=True)
+            (plugin / "plugin.yaml").write_text("name: base-only\nversion: 1.0\n", encoding="utf-8")
+            (plugin / "__init__.py").write_text("# selected base\n", encoding="utf-8")
+            (base / "config.yaml").write_text(yaml.safe_dump({"plugins": {"enabled": ["base-only"]}}),
+                                               encoding="utf-8")
+            spec = self._spec(root, base_profile="chosen-base", inherit_plugins=["base-only"])
+            with mock.patch.object(forge, "run", side_effect=self._fake_run(root, [])), \
+                    mock.patch.object(forge, "has_bot_chat", return_value=True):
+                out = forge.forge(spec)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["plugins"]["inherited"], ["base-only"],
+                             "plugin inheritance must select from base_profile, not the root profile")
+            self.assertTrue((root / "profiles" / "marlow" / "plugins" / "base-only" / "plugin.yaml").exists())
+
     def test_create_agent_inherits_by_setting_or_by_argument(self):
         from unittest import mock
         with tempfile.TemporaryDirectory() as t:

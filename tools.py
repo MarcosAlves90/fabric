@@ -85,8 +85,12 @@ def create_agent(args: dict, settings: dict | None = None, **kwargs) -> str:
     if problem:
         return json.dumps({"ok": False, "error": problem})
     root = hermes_root()
-    spec = {**args, "launch_profile": launch_profile(kwargs.get("session_id"), root),
-            "hermes_root": str(root), "settings": settings or {}}
+    base_profile = args.get("base_profile")
+    try:
+        forge.resolve_base_profile(root, base_profile if isinstance(base_profile, str) else "")
+    except ValueError as e:
+        return json.dumps({"ok": False, "error": str(e)})
+    spec = {**args, "hermes_root": str(root), "settings": settings or {}}
     try:
         p = subprocess.run([sys.executable, str(PLUGIN_DIR / "forge.py"), "-"], input=json.dumps(spec),
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900)
@@ -123,8 +127,12 @@ def create_team(args: dict, settings: dict | None = None, **kwargs) -> str:
             if problem:
                 return json.dumps({"ok": False, "error": problem})
     root = hermes_root()
-    spec = {**args, "launch_profile": launch_profile(kwargs.get("session_id"), root),
-            "hermes_root": str(root), "settings": settings or {}}
+    base_profile = args.get("base_profile")
+    try:
+        forge.resolve_base_profile(root, base_profile if isinstance(base_profile, str) else "")
+    except ValueError as e:
+        return json.dumps({"ok": False, "error": str(e)})
+    spec = {**args, "hermes_root": str(root), "settings": settings or {}}
     try:
         p = subprocess.run([sys.executable, str(PLUGIN_DIR / "team.py"), "-"], input=json.dumps(spec),
                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3600)

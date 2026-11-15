@@ -236,6 +236,38 @@ class Manage(unittest.TestCase):
             self.assertIn("already exists", again["error"])
             self.assertTrue(manage.manage(base)["ok"])  # default name still works
 
+    def test_import_template_ignores_embedded_base_profile(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t), profiles=("source",))
+            template = Path(t) / "template.fabric.json"
+            template.write_text(json.dumps({
+                "format": "fabric/template", "version": 1, "role": "writer",
+                "display_name": "Quill", "base_profile": "template-only-missing",
+            }), encoding="utf-8")
+            calls = []
+
+            def create_profile(_root, *args, **kwargs):
+                calls.append(args)
+                profile = root / "profiles" / args[2]
+                profile.mkdir(parents=True)
+                (profile / "config.yaml").write_text(yaml.safe_dump({"model": {"default": "cloned-model"}}),
+                                                       encoding="utf-8")
+                return subprocess.CompletedProcess(args, 0, "", "")
+
+            settings = {"workspace_survey": False, "ack_reactions": False, "journal_enabled": False,
+                        "ack_tapback": False, "enforce_approvals": False, "shared_policy": False,
+                        "install_gateway": False}
+            with mock.patch.object(forge, "run", side_effect=create_profile), \
+                 mock.patch.object(forge, "bot_chat", return_value=(True, "Hello")):
+                out = manage.manage({"op": "import", "hermes_root": str(root), "path": str(template),
+                                     "display_name": "Quill", "launch_profile": "source", "settings": settings})
+
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(calls[0][0:4], ("profile", "create", out["name"], "--clone-from"))
+            self.assertEqual(calls[0][4], "default")
+            imported = yaml.safe_load((root / "profiles" / out["name"] / "config.yaml").read_text(encoding="utf-8"))
+            self.assertEqual(imported["model"]["default"], "source-model")
+
     def test_import_rejects_missing_archive(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))
@@ -281,14 +313,17 @@ class Teach(unittest.TestCase):
 
 class Team(unittest.TestCase):
     def test_team_needs_members(self):
-        out = team.build_team({"team": "Content", "members": []})
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                   "team": "Content", "members": []})
         self.assertFalse(out["ok"])
         self.assertIn("at least one member", out["error"])
 
     def test_unknown_lead_is_refused_before_building(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))
-            out = team.build_team({"hermes_root": str(root), "lead_name": "nobody",
+            out = team.build_team({"hermes_root": str(root), "base_profile": "default", "lead_name": "nobody",
                                    "members": [{"display_name": "Quill", "role": "Writer", "one_job": "writes",
                                                 "soul_md": "# Quill\n", "toolsets": []}]})
             self.assertFalse(out["ok"])

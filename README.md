@@ -12,7 +12,7 @@
 
 **Describe the job. Reuse what fits; provision a new Bot when it needs its own persistent role.**
 
-This checkout is not published under a Fabric catalog entry or remote yet, so there is no Fabric install command. Install instructions will be added when a Fabric remote is available. Existing `bot-forge` IDs and settings remain documented below for installations created under the former name.
+Install the plugin with `hermes plugins install MarcosAlves90/fabric --no-enable`, then enable it with `hermes plugins enable fabric`. Existing `bot-forge` IDs and settings remain documented below for installations created under the former name.
 
 <p align="center">
   <img src="docs/demo.gif" alt="One sentence becomes a complete working Bot — identity, SOUL.md, memory, tools, routines and a running gateway" width="480">
@@ -143,7 +143,7 @@ Or ask your agent: *"what tools do you have for creating agents?"* — it should
 
 Open **Bot Mode**, click the Bot you enabled, and type:
 
-> make me a bot that writes x.com posts and threads
+> make me a bot that writes x.com posts and threads, using <my-named-profile> as the base
 
 Wait 1–3 minutes. The reply looks like:
 
@@ -155,9 +155,15 @@ brain: gpt-6-astra   tools: browser, file, web, …
 
 Click the new Bot — its Bot Chat already has its introduction.
 
-### 8. Choose how new Bots sign in
+### 8. Choose the base profile and model for new Bots
 
-Unless given an explicit route, new Bots retain the existing model inheritance behavior.
+`create_agent` and `create_team` require `base_profile`: explicitly name an existing Hermes
+profile to clone. If you have not named one, the agent must ask rather than infer the calling
+or default profile. For a team, one top-level `base_profile` applies to every newly created
+lead/member; an existing `lead_name` is reused, not cloned. Hermes' native profile clone copies
+the selected profile's config/model and Hermes-managed credentials. Choose a base whose
+credentials you intend the new Bot(s) to inherit. Credential values never belong in tool args.
+
 `create_agent.model`, `create_team.lead.model` and `create_team.members[].model` accept:
 
 ```json
@@ -165,19 +171,19 @@ Unless given an explicit route, new Bots retain the existing model inheritance b
 ```
 
 Optional `base_url` and `api_mode` travel with that route. The complete block is applied
-before the first inference, without carrying over the creator's provider transport settings.
-Creation-tool calls reject missing/empty names or providers and unsupported fields before
-spawning; credentials must never be supplied here. Omit `model` to inherit, rather than `{}`.
-This does not select tiers automatically or authorize changing providers/budgets. An omitted
-team-member route inherits the calling profile as before, not the newly configured team lead.
+before the first inference; an explicit route overrides the base profile's model. Credentials
+must never be supplied here. Omit `model` to inherit, rather than `{}`. This does not select
+tiers automatically or authorize changing providers/budgets. `copy_agent` and `import_agent`
+remain outside the required-base flow; template imports without `base_profile` keep their legacy
+model behavior and do not choose a base for fresh creation.
 
 Whether the selected model can be used right away depends on the provider:
 
 | Your model's provider | What happens | What to do |
 |---|---|---|
-| **API key** (OpenRouter, OpenAI API, Anthropic API, …) | Works immediately — keys are copied to new profiles | Nothing |
+| **API key** (OpenRouter, OpenAI API, Anthropic API, …) | May work immediately when the selected base profile has the needed Hermes-managed credentials | Choose a base whose credentials you intend to inherit; credential values never belong in tool args |
 | **Local model** (llama.cpp, Ollama, LM Studio) | Works immediately | Nothing |
-| **OAuth sign-in** (ChatGPT/Codex, Claude subscription, …) | The Bot is created; the result tells you it needs a sign-in | Run the command it gives you once per Bot, **or** set a `fallback_model`, **or** see *share one login* below |
+| **OAuth sign-in** (ChatGPT/Codex, Claude subscription, …) | The Bot is created; copied auth may still need a sign-in or may not work across profiles | Run the command it gives you, set a `fallback_model`, or review the provider-specific risks below |
 
 ---
 
@@ -241,7 +247,7 @@ plugins:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `inherit_model` | `true` | Inherit the calling profile's model unless an explicit creation route is supplied. |
+| `inherit_model` | `true` | Controls legacy/template imports without an explicit base only. A selected base's model is retained regardless of this setting unless an explicit creation route overrides it. |
 | `fallback_model` | `{}` | Model to switch a Bot to when its inherited model can't sign in, e.g. `{default: qwen3, provider: custom, base_url: http://127.0.0.1:8080/v1}`. |
 | `probe_local_models` | `false` | With no `fallback_model`, look for a local llama.cpp / Ollama / LM Studio server to fall back to. |
 | `install_gateway` | `true` | Verify live host serving and request a hot-rescan if needed. Install a dedicated service only for an explicitly standalone profile. Skipped on Windows. |
@@ -250,13 +256,13 @@ plugins:
 | `backup_before_delete` | `true` | Export the Bot to a `.tar.gz` before deleting it, so it can be restored. If the backup fails, the delete is refused. |
 | `allow_secrets` | `false` | Let `share_agent` write / `import_agent` accept a template the secret scanner marked BLOCK. Operator-only; the model cannot pass it as an argument. |
 | `suggest_connectors` | `true` | After building a Bot, suggest matching servers from Hermes' MCP catalog. Suggestion only — connecting an account always needs you. |
-| `inherit_plugins` | `[]` | Plugins from your main profile to copy into every new Bot, by name, or `["all"]` for every plugin enabled there. Off by default — see *Plugins in a Bot*. |
+| `inherit_plugins` | `[]` | Plugins from the selected `base_profile` to copy into every new Bot, by name, or `["all"]` for every plugin enabled there. Off by default — see *Plugins in a Bot*. |
 
 ### Plugins in a Bot
 
-A new Bot is a clone of your main profile's config, and that config lists the plugins you have enabled — but Hermes keeps plugin directories per profile and `profile create --clone-from` does not copy them, so a plugin you run on your main profile is *enabled but inert* in every Bot: named in its `config.yaml`, never loaded. Nothing breaks, so nothing said so. That is the right default — a Bot should get only what it was asked for — and now it is a choice:
+A new Bot clones the selected base profile's config, which lists its enabled plugins — but Hermes keeps plugin directories per profile and native `profile create --clone-from` does not copy those directories, so a plugin can be *enabled but inert* in the new Bot: named in its `config.yaml`, never loaded. This remains opt-in:
 
-- `inherit_plugins: ["my-style-plugin"]` in the settings above carries those plugins into every new Bot; `["all"]` carries every plugin enabled on your main profile.
+- `inherit_plugins: ["my-style-plugin"]` in the settings above carries those plugins from the selected base into every new Bot; `["all"]` carries every plugin enabled on that base.
 - `create_agent(..., inherit_plugins: [...])` does it for one Bot, and `update_agent(name, inherit_plugins: [...])` for a Bot you already have.
 - `check_agents` flags a Bot whose config names a plugin that is not installed in it.
 
@@ -264,12 +270,17 @@ A copied plugin is enabled in the Bot's config and gets its own `plugin-data`. F
 
 ### Sharing one login across Bots
 
-Fabric never touches credentials, and there is no helper here that copies them.
+Native Hermes profile cloning can duplicate the selected base profile's Hermes-managed
+credentials along with its config/model. Choose a base whose credentials you intend to inherit;
+credential values never belong in tool arguments. This is separate from plugin inheritance:
+copying plugin directories does not copy plugin credential files. Duplicated credentials have
+provider-specific risks: OAuth refresh tokens, in particular, may conflict when used by multiple
+profiles, and copied auth may still require a fresh sign-in.
 
 An earlier version shipped `extras/share_login.py`, which copied the root profile's `auth.json`
-into each Bot. It is gone: duplicating a credential file leaves copies nobody tracks, OAuth
-refresh tokens compete at the provider, and a plugin that advertises a credential-copying script
-is asking to be trusted with something it should not hold. Sign each Bot in on its own.
+into each Bot. That helper is gone; its removal is distinct from native Hermes cloning, which can
+copy credentials as described above. The helper's unmanaged copies and OAuth refresh-token
+conflicts were the reason it was removed.
 
 ---
 
@@ -331,7 +342,7 @@ Only words cross between Bots. No file is copied, no credential or environment t
 
 ### A team in one sentence
 
-> set me up a content team
+> set me up a content team, using my work profile as the base
 
 first considers what already exists. Only justified, authorized new profiles go into
 `members`; use `lead_name` to reuse an existing lead. The tool does not enroll arbitrary
@@ -339,6 +350,8 @@ existing members. If no new profiles are needed, no team creation call is needed
 For a multi-Bot creation, each new member gets its own role and optional model route.
 Failed members are cleaned up individually; successful members remain. Inspect each
 member's `warning` and `gateway`, rather than assuming the whole team is online.
+The explicitly named `base_profile` is shared by every new lead/member; if none was named,
+ask before creating the team. A reused `lead_name` is not cloned.
 
 ### A Bot that tells you where your request stands
 
@@ -517,7 +530,7 @@ Bundled skill: `fabric:fabric` — role defaults, naming rules and a SOUL.md tem
 `create_agent` runs `forge.py` in a subprocess with a clean environment (Hermes agent terminals point `HOME`/`HERMES_HOME` at the calling profile):
 
 1. **Name check** — against live profiles, display names and Bot titles; generic or taken names are refused with suggestions *before* anything is created
-2. `hermes profile create <id> --clone-from default` — messaging channels are left behind
+2. `hermes profile create <id> --clone-from <base_profile>` — uses the explicitly selected base; native Hermes cloning copies its config/model and Hermes-managed credentials, while messaging channels are left behind
 3. **Bot Mode metadata** in `profile.yaml` (`ui_meta.hermes-bots`: title, description, blob face) — the same shape Desktop's New Agent dialog saves
 4. **SOUL.md** (guaranteed to state the Bot's own name), `memories/MEMORY.md`, and `memories/USER.md` minus entries that name the assistant — otherwise the new Bot adopts another Bot's name
 5. **Journal** — private, dated Markdown entries plus a concise factual journaling policy

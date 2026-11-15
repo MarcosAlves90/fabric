@@ -1,9 +1,9 @@
 name: fabric
 version: 0.27.0
-description: Say "make me a <role>" and your Hermes agent builds a complete, working Bot — name, face, SOUL.md, memory, tools, skills, routines, Bot Chat and gateway — tested and rolled back on failure.
+description: Say "make me a <role> using <profile> as the base" and your Hermes agent builds a complete, working Bot — name, face, SOUL.md, memory, tools, skills, routines, Bot Chat and gateway — tested and rolled back on failure. Fresh creation requires an explicitly named existing base_profile; native Hermes cloning copies its config/model and Hermes-managed credentials.
 author: Bikash Joshi
 license: MIT
-homepage: https://github.com/BkashJEE/hermes-bot-forge
+homepage: https://github.com/MarcosAlves90/fabric
 tags: [bots, bot-mode, profiles, agents, multi-agent, automation]
 kind: standalone
 requires_hermes: ">=0.21"
@@ -39,7 +39,7 @@ config_schema:
   inherit_model:
     type: bool
     default: true
-    description: Unless an explicit model is supplied, new Bots use the creator's model (like Bot Mode's New Agent).
+    description: Controls legacy/template imports without an explicit base only. A selected base_profile's model is retained regardless of this setting unless an explicit creation route overrides it.
   fallback_model:
     type: dict
     default: {}
@@ -125,9 +125,9 @@ config_schema:
     type: list
     default: []
     description: >-
-      Plugins from the root profile to copy into every new Bot and enable there, by name; ["all"] for
-      every plugin enabled on the root profile. Off by default: `hermes profile create --clone-from`
-      copies the root's plugins.enabled list but not the plugin directories, so without this a root
+      Plugins from the selected base_profile to copy into every new Bot and enable there, by name; ["all"] for
+      every plugin enabled on that base. Off by default: native `hermes profile create --clone-from`
+      copies the base's plugins.enabled list but not the plugin directories, so without this a base
       plugin is enabled-but-inert in a Bot (check_agents flags those). Fabric itself is never
       copied, and no .env or credential file travels with a plugin. create_agent's own
       inherit_plugins argument overrides this per Bot. Under ["all"], a plugin that declares

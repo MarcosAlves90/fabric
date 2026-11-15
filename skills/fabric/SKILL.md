@@ -1,6 +1,6 @@
 ---
 name: fabric
-description: "Design a new Hermes Bot from one sentence and spawn it with the create_agent tool. Role defaults, SOUL.md template, zero questions."
+description: "Design and spawn a Hermes Bot with role defaults and a SOUL.md template; ask for an explicit existing base profile before creation."
 version: 0.27.0
 author: Bikash Joshi
 license: MIT
@@ -35,6 +35,7 @@ about material ambiguity or missing authority; do not add a mandatory interview.
 job request does not itself authorize extra profiles, changed models or recurring work.
 
 ## Hard rules
+- Before `create_agent` or `create_team`, require the user to explicitly name an existing `base_profile`. If they have not named one, ask; never infer the calling or default profile. Native Hermes profile cloning copies that base's config/model and Hermes-managed credentials, so warn the user to choose a base whose credentials they intend to inherit. Credential values never belong in tool args.
 - **One coherent responsibility per new Bot.** Do not turn every subtask into a permanent profile.
 - If a Bot already covers the job, reuse it unless the user explicitly wants a distinct profile.
 - **Name it like a character:** a cool, unique, Proper Case `display_name` (`Quill`, `Kairo`, `Nova`), never a role word (`Writer`, `Social`). If the tool says the name is taken, pick one of its suggestions.
@@ -119,7 +120,7 @@ The result's `workspace` block is what you report: `fits` (the places it belongs
 **If the tool refuses with `covered_by`,** an existing Bot already does this job. Do not retry blindly. Tell the user which Bot holds it and offer the two real choices: a narrower job for the new Bot, or `update_agent` on the existing one. Only pass `allow_overlap: true` after they say they want both.
 
 ## Plugins in a Bot
-A new Bot's config lists the same plugins as the user's main profile, but the plugin directories are not cloned, so those plugins never load in it. That is on purpose: a Bot gets only what it was asked for. When the user wants a plugin in the Bot — "every Bot should have my style plugin", "give Nova the bookmarks plugin" — pass `inherit_plugins: ["<name>"]` to `create_agent` (or `["all"]` for everything enabled on the main profile), or `update_agent(name, inherit_plugins: [...])` for a Bot that already exists. Fabric itself is never copied into a Bot and no credential file travels with a plugin; a plugin that needs a key still needs the user to set it in that Bot. `check_agents` flags a Bot whose config names a plugin that is not installed in it ("enabled but not installed"); the fix is the same `update_agent` call, or leaving it alone if the user never wanted that plugin there.
+A new Bot's config lists the selected base profile's plugins, but Hermes native profile cloning does not copy plugin directories, so those plugins may be enabled but not load. Plugin copying remains opt-in: when requested, `inherit_plugins: ["<name>"]` copies named plugins from the selected base (`["all"]` means all enabled on that base); use `update_agent(name, inherit_plugins: [...])` for an existing Bot. Fabric itself is never copied into a Bot and plugin credential files are not copied. `check_agents` flags a plugin that is enabled but not installed.
 
 ## Its own screen
 `bot_screen: true` gives the Bot a desktop on the gateway host: it browses and clicks there, the user watches in Hermes Desktop, takes over for a login, 2FA or CAPTCHA, and hands back — the Bot continues with the session the user just signed in to. It grants `computer_use` and `browser`.
@@ -185,6 +186,9 @@ Apply the same preflight to each proposed responsibility, including the lead. A 
 team does not prescribe a fixed headcount: existing Bots, skills, delegation and routines may
 already cover it. Only justified, authorized NEW profiles go in `create_team.members`.
 Use `lead_name` for an existing lead; the tool does not enroll arbitrary existing members.
+Supply one explicitly named top-level `base_profile` for every newly created team profile.
+It applies to each new lead/member; an existing `lead_name` is reused rather than cloned. If
+the user has not named the base, ask before calling `create_team`.
 If no new profiles are needed, do not call `create_team`. If just one is needed, `create_agent`
 is sufficient. Preserve the tool's existing maximum of six new members; do not fill it.
 
@@ -196,7 +200,9 @@ transaction that rolls back the whole team.
 `create_agent.model`, `create_team.lead.model` and each `create_team.members[].model` accept
 `default` and `provider`, plus optional `base_url` and `api_mode`. Use an authorized route
 appropriate for the role, never credentials in the tool call. The route is written before the
-first model call. Omit it to keep existing inheritance; do not use `{}` to request inheritance.
+first model call and overrides the selected base's model. Omit it to inherit that base's model;
+do not use `{}` to request inheritance. Templates imported without `base_profile` retain
+legacy model behavior and must not silently select a base.
 Per-profile sign-in and configured fallback behavior still apply. Report fallback warnings;
 this feature is explicit configuration, not an automatic model-tiering service.
 
