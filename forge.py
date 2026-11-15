@@ -1074,6 +1074,10 @@ def forge(s: dict) -> dict:
             terminal = cfg.get("terminal") if isinstance(cfg.get("terminal"), dict) else {}
             terminal["backend"] = sandbox
             cfg["terminal"] = terminal
+        elif isinstance(s.get("sandbox"), str) and s["sandbox"].strip().lower() == "local":
+            terminal = cfg.get("terminal")
+            if isinstance(terminal, dict):
+                terminal.pop("backend", None)
         dump_yaml(cfg_path, cfg)
 
         # 5. routines

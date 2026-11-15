@@ -548,6 +548,46 @@ class ForgeModelIntegration(unittest.TestCase):
         self.assertEqual(self.run_mock.call_count, 0)
         self.assertFalse((self.root / "profiles" / "quill").exists())
 
+    def test_explicit_local_overrides_inherited_container_backend(self):
+        model = {"default": "base-model", "provider": "base-provider"}
+        self.add_profile("docker-base", model)
+        forge.dump_yaml(self.root / "profiles" / "docker-base" / "config.yaml",
+                        {"model": model, "terminal": {"backend": "docker", "timeout": 45}})
+
+        out = forge.forge(self.spec(base_profile="docker-base"))
+
+        self.assertTrue(out["ok"], out)
+        config = forge.load_yaml(self.root / "profiles" / "quill" / "config.yaml")
+        self.assertEqual(config["terminal"], {"timeout": 45})
+
+    def test_legacy_import_without_sandbox_preserves_inherited_container_backend(self):
+        model = {"default": "base-model", "provider": "base-provider"}
+        self.add_profile("docker-base", model)
+        forge.dump_yaml(self.root / "profiles" / "docker-base" / "config.yaml",
+                        {"model": model, "terminal": {"backend": "docker", "timeout": 45}})
+        spec = self.spec(base_profile="docker-base")
+        spec.pop("sandbox")
+
+        out = forge.forge(spec)
+
+        self.assertTrue(out["ok"], out)
+        config = forge.load_yaml(self.root / "profiles" / "quill" / "config.yaml")
+        self.assertEqual(config["terminal"]["backend"], "docker")
+
+    def test_team_member_local_overrides_inherited_container_backend(self):
+        model = {"default": "base-model", "provider": "base-provider"}
+        self.add_profile("docker-base", model)
+        forge.dump_yaml(self.root / "profiles" / "docker-base" / "config.yaml",
+                        {"model": model, "terminal": {"backend": "docker", "timeout": 45}})
+
+        out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
+                               "base_profile": "docker-base", "lead_name": "default",
+                               "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
+
+        self.assertTrue(out["ok"], out)
+        config = forge.load_yaml(self.root / "profiles" / "quill" / "config.yaml")
+        self.assertNotIn("backend", config["terminal"])
+
     def test_team_applies_explicit_base_to_new_profiles_but_reuses_named_lead(self):
         base_model = {"default": "team-base-model", "provider": "team-base-provider"}
         self.add_profile("team-base", base_model)
