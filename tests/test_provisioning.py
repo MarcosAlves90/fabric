@@ -35,6 +35,13 @@ class ModelToolBoundary(unittest.TestCase):
         self.assertIn("base_profile", schemas.CREATE_AGENT["parameters"]["required"])
         self.assertIn("base_profile", schemas.CREATE_TEAM["parameters"]["required"])
 
+    def test_create_tools_require_explicit_sandbox_choices(self):
+        agent = schemas.CREATE_AGENT["parameters"]
+        team = schemas.CREATE_TEAM["parameters"]
+        self.assertIn("sandbox", agent["required"])
+        self.assertIn("sandbox", team["properties"]["lead"]["required"])
+        self.assertIn("sandbox", team["properties"]["members"]["items"]["required"])
+
     def test_agent_rejects_missing_or_invalid_base_before_subprocess(self):
         for base in (None, "", "../manager", "missing"):
             args: dict = {"role": "Writer"}
@@ -45,6 +52,20 @@ class ModelToolBoundary(unittest.TestCase):
                                  return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run:
                 result = json.loads(tools.create_agent(args))
                 self.assertFalse(result["ok"], "create_agent must reject a missing base_profile")
+                run.assert_not_called()
+
+    def test_agent_rejects_missing_or_blank_sandbox_before_subprocess(self):
+        root = self._base_root("writer-base")
+        for sandbox in (None, "", "   "):
+            args = {"role": "Writer", "base_profile": "writer-base"}
+            if sandbox is not None:
+                args["sandbox"] = sandbox
+            with self.subTest(sandbox=sandbox), \
+                    patch.object(tools, "hermes_root", return_value=root), \
+                    patch.object(tools.subprocess, "run",
+                                 return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run:
+                result = json.loads(tools.create_agent(args))
+                self.assertFalse(result["ok"], "create_agent must reject a missing sandbox")
                 run.assert_not_called()
 
     def test_team_rejects_missing_or_invalid_base_before_subprocess(self):
@@ -75,7 +96,8 @@ class ModelToolBoundary(unittest.TestCase):
             with (patch.object(tools, "hermes_root", return_value=root),
                   patch.object(tools.subprocess, "run",
                                return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run):
-                result = json.loads(tools.create_agent({"role": "Writer", "base_profile": "external"}))
+                result = json.loads(tools.create_agent({"role": "Writer", "base_profile": "external",
+                                                        "sandbox": "local"}))
 
             run.assert_not_called()
             self.assertFalse(result["ok"], "create_agent must reject a missing base_profile")
@@ -100,7 +122,7 @@ class ModelToolBoundary(unittest.TestCase):
                  patch.object(tools, "hermes_root", return_value=root), \
                  patch.object(tools.subprocess, "run",
                               return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run:
-                result = json.loads(tools.create_agent({"role": "Writer", "model": model,
+                result = json.loads(tools.create_agent({"role": "Writer", "model": model, "sandbox": "local",
                                                         "base_profile": "writer-base"}))
                 self.assertFalse(result["ok"])
                 self.assertNotIn("DO_NOT_ECHO", json.dumps(result))
@@ -111,6 +133,9 @@ class ModelToolBoundary(unittest.TestCase):
         for bad_part in ("lead", "member"):
             args = {"lead": {"role": "Lead"}, "members": [{"role": "First"}, {"role": "Second"}],
                     "base_profile": "team-base"}
+            args["lead"]["sandbox"] = "local"
+            for member in args["members"]:
+                member["sandbox"] = "local"
             (args["lead"] if bad_part == "lead" else args["members"][1])["model"] = {}
             with self.subTest(part=bad_part), \
                  patch.object(tools, "hermes_root", return_value=root), \
@@ -120,12 +145,24 @@ class ModelToolBoundary(unittest.TestCase):
                 self.assertFalse(result["ok"])
                 run.assert_not_called()
 
+    def test_team_checks_every_new_profile_sandbox_before_subprocess(self):
+        root = self._base_root("team-base")
+        args = {"lead": {"role": "Lead", "sandbox": "local"},
+                "members": [{"role": "First", "sandbox": "docker"}, {"role": "Second"}],
+                "base_profile": "team-base"}
+        with patch.object(tools, "hermes_root", return_value=root), \
+                patch.object(tools.subprocess, "run",
+                             return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run:
+            result = json.loads(tools.create_team(args))
+        self.assertFalse(result["ok"])
+        run.assert_not_called()
+
     def test_agent_wrapper_forwards_route_and_keeps_omission(self):
         route = {"default": "worker", "provider": "p", "base_url": "http://localhost:1/v1",
                  "api_mode": "chat_completions"}
         root = self._base_root("writer-base")
         for fields in ({}, {"model": route}):
-            args = {"role": "Writer", "base_profile": "writer-base", **fields}
+            args = {"role": "Writer", "base_profile": "writer-base", "sandbox": "local", **fields}
             original = copy.deepcopy(args)
             with patch.object(tools, "hermes_root", return_value=root), \
                     patch.object(tools, "launch_profile", return_value="manager") as launch_profile, \
@@ -139,7 +176,7 @@ class ModelToolBoundary(unittest.TestCase):
                 self.assertEqual(args, original)
 
     def test_agent_wrapper_forwards_explicit_base_profile(self):
-        args = {"role": "Writer", "base_profile": "writer-base"}
+        args = {"role": "Writer", "base_profile": "writer-base", "sandbox": "local"}
         root = self._base_root("writer-base")
         with patch.object(tools, "hermes_root", return_value=root), \
                 patch.object(tools, "launch_profile", return_value="manager") as launch_profile, \
@@ -151,8 +188,9 @@ class ModelToolBoundary(unittest.TestCase):
         self.assertEqual(spec["base_profile"], "writer-base")
 
     def test_team_wrapper_forwards_each_route_without_inventing_a_default(self):
-        args = {"lead": {"model": {"default": "lead-model", "provider": "a"}},
-                "members": [{"model": {"default": "worker-model", "provider": "b"}}, {"role": "Inherited"}],
+        args = {"lead": {"model": {"default": "lead-model", "provider": "a"}, "sandbox": "local"},
+                "members": [{"model": {"default": "worker-model", "provider": "b"}, "sandbox": "docker"},
+                            {"role": "Inherited", "sandbox": "local"}],
                 "base_profile": "team-base"}
         root = self._base_root("team-base")
         with patch.object(tools, "hermes_root", return_value=root), \
@@ -168,7 +206,7 @@ class ModelToolBoundary(unittest.TestCase):
 
     def test_team_wrapper_forwards_one_top_level_base_profile(self):
         base_profile = "writer_profile_with_a_long_id_12345"
-        args = {"base_profile": base_profile, "members": [{"role": "Writer"}]}
+        args = {"base_profile": base_profile, "members": [{"role": "Writer", "sandbox": "local"}]}
         root = self._base_root(base_profile)
         with patch.object(tools, "hermes_root", return_value=root), \
                 patch.object(tools, "launch_profile", return_value="manager") as launch_profile, \
@@ -179,6 +217,16 @@ class ModelToolBoundary(unittest.TestCase):
         self.assertNotIn("launch_profile", spec)
         self.assertEqual(spec["base_profile"], base_profile)
         self.assertNotIn("base_profile", spec["members"][0])
+
+    def test_agent_wrapper_forwards_explicit_sandbox_unchanged(self):
+        for sandbox in ("local", "docker"):
+            args = {"role": "Writer", "base_profile": "writer-base", "sandbox": sandbox}
+            root = self._base_root("writer-base")
+            with self.subTest(sandbox=sandbox), patch.object(tools, "hermes_root", return_value=root), \
+                    patch.object(tools.subprocess, "run",
+                                 return_value=CompletedProcess([], 0, '{"ok":true}', "")) as run:
+                self.assertTrue(json.loads(tools.create_agent(args))["ok"])
+                self.assertEqual(json.loads(run.call_args.kwargs["input"])["sandbox"], sandbox)
 
 
 @unittest.skipIf(os.name == "nt",
@@ -441,7 +489,7 @@ class ForgeModelIntegration(unittest.TestCase):
 
     def spec(self, **extra):
         return {"hermes_root": str(self.root), "display_name": "Quill", "role": "Writer",
-                "settings": self.settings, "launch_profile": "manager", **extra}
+                "settings": self.settings, "launch_profile": "manager", "sandbox": "local", **extra}
 
     def add_profile(self, name, model):
         profile = self.root / "profiles" / name
@@ -490,13 +538,23 @@ class ForgeModelIntegration(unittest.TestCase):
         self.assertEqual(creates[-1][creates[-1].index("--clone-from") + 1], "writer-base")
         self.assertEqual(self.at_inference[-1], ("vega", route))
 
+    def test_explicit_base_without_sandbox_is_rejected_before_profile_creation(self):
+        self.add_profile("writer-base", {"default": "base-model", "provider": "base-provider"})
+        spec = self.spec(base_profile="writer-base")
+        spec.pop("sandbox")
+        spec.pop("launch_profile")
+        out = forge.forge(spec)
+        self.assertFalse(out["ok"])
+        self.assertEqual(self.run_mock.call_count, 0)
+        self.assertFalse((self.root / "profiles" / "quill").exists())
+
     def test_team_applies_explicit_base_to_new_profiles_but_reuses_named_lead(self):
         base_model = {"default": "team-base-model", "provider": "team-base-provider"}
         self.add_profile("team-base", base_model)
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
                                "launch_profile": "manager", "base_profile": "team-base",
-                               "lead": {"display_name": "Atlas", "role": "Lead"},
-                               "members": [{"display_name": "Quill", "role": "Writer"}]})
+                               "lead": {"display_name": "Atlas", "role": "Lead", "sandbox": "local"},
+                               "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"], out)
         creates = [call.args[1:] for call in self.run_mock.call_args_list
                    if call.args[1:3] == ("profile", "create")]
@@ -508,7 +566,7 @@ class ForgeModelIntegration(unittest.TestCase):
         self.at_inference.clear()
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
                                "base_profile": "team-base", "lead_name": "default",
-                               "members": [{"display_name": "Nova", "role": "Reviewer"}]})
+                               "members": [{"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}]})
         self.assertTrue(out["ok"], out)
         creates = [call.args[1:] for call in self.run_mock.call_args_list
                    if call.args[1:3] == ("profile", "create")]
@@ -561,9 +619,9 @@ class ForgeModelIntegration(unittest.TestCase):
         self.assertEqual(self.run_mock.call_count, 1)
 
     def test_team_routes_are_set_before_each_members_first_inference(self):
-        lead = {"display_name": "Atlas", "role": "Lead", "model": {"default": "lead", "provider": "a"}}
-        worker = {"display_name": "Quill", "role": "Writer", "model": {"default": "worker", "provider": "b"}}
-        inherited = {"display_name": "Nova", "role": "Reviewer"}
+        lead = {"display_name": "Atlas", "role": "Lead", "sandbox": "local", "model": {"default": "lead", "provider": "a"}}
+        worker = {"display_name": "Quill", "role": "Writer", "sandbox": "local", "model": {"default": "worker", "provider": "b"}}
+        inherited = {"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
                                "base_profile": "manager", "lead": lead, "members": [worker, inherited]})
         self.assertTrue(out["ok"])
@@ -575,7 +633,7 @@ class ForgeModelIntegration(unittest.TestCase):
     def test_existing_team_lead_is_reused_not_recreated(self):
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
                                "base_profile": "manager", "lead_name": "default",
-                               "members": [{"display_name": "Quill", "role": "Writer"}]})
+                               "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"])
         self.assertEqual(len(self.at_inference), 1)
         self.assertEqual(out["lead"], "default")
@@ -585,7 +643,7 @@ class ForgeModelIntegration(unittest.TestCase):
         with patch.object(forge, "provision_gateway", return_value="pending: no host verified"):
             out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
                                    "base_profile": "manager",
-                                   "members": [{"display_name": "Quill", "role": "Writer"}]})
+                                   "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"])
         self.assertTrue(out["members"][0]["gateway"].startswith("pending:"))
         self.assertIn("sign-in", out["members"][0]["warning"])
@@ -621,15 +679,15 @@ class SubprocessConstruction(unittest.TestCase):
     def test_agent_model_survives_actual_wrapper_and_forge_subprocess(self):
         route = {"default": "worker", "provider": "worker-p", "api_mode": "responses"}
         out = json.loads(tools.create_agent({"display_name": "Quill", "role": "Writer", "model": route,
-                                            "base_profile": "default"},
+                                            "base_profile": "default", "sandbox": "local"},
                                            settings=self.settings))
         self.assertTrue(out["ok"], out)
         self.assertEqual(json.loads(out["intro"]), route)
         self.assertEqual(out["gateway"], "skipped")
 
     def test_team_member_models_survive_actual_team_subprocess(self):
-        members = [{"display_name": "Quill", "role": "Writer", "model": {"default": "writer", "provider": "w"}},
-                   {"display_name": "Nova", "role": "Reviewer"}]
+        members = [{"display_name": "Quill", "role": "Writer", "sandbox": "local", "model": {"default": "writer", "provider": "w"}},
+                   {"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}]
         out = json.loads(tools.create_team({"members": members, "base_profile": "default"}, settings=self.settings))
         self.assertTrue(out["ok"], out)
         self.assertEqual([(m["name"], m["model"], m["gateway"]) for m in out["members"]],

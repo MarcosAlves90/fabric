@@ -59,6 +59,11 @@ def build_team(s: dict) -> dict:
     members = [m for m in (s.get("members") or []) if isinstance(m, dict)][:MAX_MEMBERS]
     if not members:
         return {"ok": False, "error": "a team needs at least one member (list them in `members`)"}
+    new_profiles = ([s["lead"]] if isinstance(s.get("lead"), dict) else []) + members
+    for profile in new_profiles:
+        problem = forge.sandbox_choice_error(profile)
+        if problem:
+            return {"ok": False, "error": problem}
 
     team = (s.get("team") or "").strip() or "the"
     built, failed = [], []

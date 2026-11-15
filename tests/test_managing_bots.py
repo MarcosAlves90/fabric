@@ -325,7 +325,7 @@ class Team(unittest.TestCase):
             root = make_root(Path(t))
             out = team.build_team({"hermes_root": str(root), "base_profile": "default", "lead_name": "nobody",
                                    "members": [{"display_name": "Quill", "role": "Writer", "one_job": "writes",
-                                                "soul_md": "# Quill\n", "toolsets": []}]})
+                                                "soul_md": "# Quill\n", "toolsets": [], "sandbox": "local"}]})
             self.assertFalse(out["ok"])
             self.assertIn("nobody", out["error"])
             self.assertEqual(list((root / "profiles").iterdir()), [])

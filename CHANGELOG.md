@@ -49,6 +49,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Changed
+- **Fresh Bot creation requires an explicit sandbox choice.** `local` runs on the host; `docker`, `singularity` and `apptainer` are opt-in container backends. If the request does not specify one, ask before creating the Bot; shell-capable tools do not imply Docker.
 - **Fresh Bot creation requires an explicitly named base profile.** `create_agent` and `create_team` use the selected existing `base_profile` for native Hermes profile cloning, which retains its model unless an explicit route overrides it; `inherit_model` controls legacy/template imports without an explicit base only. A team-level base applies to each newly created lead/member, while an existing `lead_name` is reused. Native Hermes cloning can duplicate Hermes-managed credentials, so choose a base whose credentials you intend to inherit; provider-specific risks, including OAuth refresh-token conflicts, apply. Credential values never belong in tool arguments. Optional `inherit_plugins` remains opt-in and copies plugin directories from that base because native profile cloning does not. `copy_agent` and `import_agent` remain outside this requirement.
 
 ### Fixed

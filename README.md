@@ -378,11 +378,17 @@ Turn it off for a Bot with `create_agent(ack_reactions=false)`, or on for an old
 
 ### Give a Bot its own computer
 
-A Bot with `terminal` or `code_execution` runs commands on **your** machine by default — the same weakness people hit with other bot platforms, where every Bot shares one computer and one set of logins. Ask for a sandbox instead:
+Fresh `create_agent` creations and newly built `create_team` leads/members require an explicit sandbox choice, whether or not they have `terminal` or `code_execution`. Tell Fabric whether they should run on the host or in a container; if you do not specify, the agent must ask before creating them. `local` runs on the host machine. `docker`, `singularity` and `apptainer` are opt-in container backends — the agent must not infer Docker from shell-capable tools.
 
-> make me a coding bot, sandboxed
+For example, choose the host explicitly:
 
-`create_agent(sandbox="docker")` puts that Bot's shell in its own container: it cannot read your files and cannot block the other Bots. `singularity` and `apptainer` work too. If the backend is not usable on this machine, the call is **refused before any Bot is created**, with the reason. `check_agents` reports each Bot's sandbox and flags shell-capable Bots that run on the real machine.
+> make me a coding bot using `default` as the base, running locally on my PC
+
+Or choose a container backend explicitly:
+
+> make me a coding bot using `default` as the base, running in Docker
+
+These map to `create_agent(sandbox="local")` and `create_agent(sandbox="docker")` respectively. A team needs an explicit choice for each newly created lead/member. If a requested container backend is not usable on this machine, `create_agent` is **refused before that Bot is created**; there is no silent fallback. `create_team` reports failures per profile, and a failure for a later profile can leave earlier successful profiles in place. `check_agents` reports each Bot's sandbox and flags shell-capable Bots that run on the host.
 ### A journal for work that survives the chat
 
 Every new Bot gets a private `journal/YYYY-MM-DD.md` log. After meaningful work it records a short factual entry:

@@ -65,10 +65,9 @@ CREATE_AGENT = {
                 "reason when the host cannot provide one. Ask for it when the job needs a real browser "
                 "session a human may have to rescue.")},
             "sandbox": {"type": "string", "enum": ["local", "docker", "singularity", "apptainer"], "description": (
-                "where this Bot's shell runs. 'local' (default) shares this machine; 'docker' gives the Bot its own "
-                "container, so it cannot touch the user's files and cannot block other Bots. Use a sandbox for any "
-                "Bot you give terminal or code_execution, and say so when you report back. The call is refused if "
-                "the backend is not usable on this machine.")},
+                "required explicit choice for this Bot's shell: local runs on the host; docker, singularity, or "
+                "apptainer runs in that container backend. Never infer a choice; ask the user when unstated. "
+                "The call is refused if the selected backend is not usable on this machine.")},
             "model": MODEL,
             "role": {"type": "string", "description": "role title, e.g. 'Social Media Manager'"},
             "description": {"type": "string", "description": "1-2 sentences on what it is good at (used for routing)"},
@@ -117,7 +116,7 @@ CREATE_AGENT = {
                 },
             },
         },
-        "required": ["base_profile"],
+        "required": ["base_profile", "sandbox"],
     },
 }
 
@@ -382,7 +381,9 @@ CREATE_TEAM = {
         "Use lead_name for an existing lead; put only justified NEW profiles in members. "
         "Explicit authorized profile creation stays direct. Apply skill 'fabric:fabric'. "
         "Name one existing top-level base_profile for every newly built lead/member; if the user has not named one, "
-        "ask instead of inferring the calling or default profile. Native full-profile cloning also clones "
+        "ask instead of inferring the calling or default profile. Each new lead and member also needs an explicit "
+        "sandbox choice: local runs on the host; docker, singularity, or apptainer runs in that container backend. "
+        "Never infer a sandbox; ask when unstated. Native full-profile cloning also clones "
         "credentials. Explicit model routes for new lead/members override the base model. "
         "Up to 6 members are built one at a time; failure cleanup is per Bot, not a team transaction. "
         "Report each member's warning and gateway status. Takes several minutes; say so before calling."
@@ -402,7 +403,14 @@ CREATE_TEAM = {
         "description": {"type": "string"}, "soul_md": {"type": "string"},
         "model": MODEL,
         "avatar_kind": {"type": "string", "enum": BLOB_KINDS},
-        "sandbox": {"type": "string", "enum": ["local", "docker", "singularity", "apptainer"]},
+        "sandbox": {
+            "type": "string",
+            "enum": ["local", "docker", "singularity", "apptainer"],
+            "description": (
+                "required explicit choice: local runs on the host; docker, singularity, or apptainer "
+                "uses that container backend; ask when unstated"
+            ),
+        },
         "toolsets": {"type": "array", "items": {"type": "string", "enum": TOOLSETS}},
         "skill_categories": {"type": "array", "items": {"type": "string"}},
         "approvals": {"type": "array", "items": {"type": "string"}},
@@ -413,7 +421,7 @@ CREATE_TEAM = {
             "properties": {"name": {"type": "string"}, "schedule": {"type": "string"}, "prompt": {"type": "string"}},
             "required": ["schedule", "prompt"]}},
     },
-    "required": ["display_name", "role", "one_job", "soul_md", "toolsets"],
+    "required": ["display_name", "role", "one_job", "soul_md", "toolsets", "sandbox"],
 },
             "lead_name": {"type": "string", "description": "profile name of an existing Bot to lead instead"},
             "members": {"type": "array", "maxItems": 6, "items": {
@@ -423,7 +431,14 @@ CREATE_TEAM = {
         "description": {"type": "string"}, "soul_md": {"type": "string"},
         "model": MODEL,
         "avatar_kind": {"type": "string", "enum": BLOB_KINDS},
-        "sandbox": {"type": "string", "enum": ["local", "docker", "singularity", "apptainer"]},
+        "sandbox": {
+            "type": "string",
+            "enum": ["local", "docker", "singularity", "apptainer"],
+            "description": (
+                "required explicit choice: local runs on the host; docker, singularity, or apptainer "
+                "uses that container backend; ask when unstated"
+            ),
+        },
         "toolsets": {"type": "array", "items": {"type": "string", "enum": TOOLSETS}},
         "skill_categories": {"type": "array", "items": {"type": "string"}},
         "approvals": {"type": "array", "items": {"type": "string"}},
@@ -433,7 +448,7 @@ CREATE_TEAM = {
             "properties": {"name": {"type": "string"}, "schedule": {"type": "string"}, "prompt": {"type": "string"}},
             "required": ["schedule", "prompt"]}},
     },
-    "required": ["display_name", "role", "one_job", "soul_md", "toolsets"],
+    "required": ["display_name", "role", "one_job", "soul_md", "toolsets", "sandbox"],
 }},
         },
         "required": ["base_profile", "members"],

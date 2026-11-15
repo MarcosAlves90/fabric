@@ -516,6 +516,16 @@ def gateway_state(returncode: int, output: str) -> str:
     return "started"
 
 
+def sandbox_choice_error(spec: dict) -> str:
+    """Require an explicit supported sandbox without probing backend readiness."""
+    sandbox = spec.get("sandbox") if isinstance(spec, dict) else None
+    if not isinstance(sandbox, str) or not sandbox.strip() or sandbox not in (
+        "local", "docker", "singularity", "apptainer"
+    ):
+        return "sandbox must be explicitly set to local, docker, singularity, or apptainer"
+    return ""
+
+
 def sandbox_error(sandbox: str) -> str:
     """Refuse a sandbox this machine cannot actually run, before a half-usable Bot exists."""
     sandbox = (sandbox or "local").strip().lower()
@@ -801,6 +811,10 @@ def forge(s: dict) -> dict:
     root = Path(s.get("hermes_root") or default_root())
     explicit_base = s.get("base_profile")
     settings = {**DEFAULT_SETTINGS, **{k: v for k, v in (s.get("settings") or {}).items() if v is not None}}
+    # Import callers carry launch_profile; preserve legacy sandbox defaults for shared URLs.
+    problem = sandbox_choice_error(s) if explicit_base is not None and "launch_profile" not in s else ""
+    if problem:
+        return {"ok": False, "error": problem, "rolled_back": False}
     if s.get("template"):
         if __package__:
             from . import portable

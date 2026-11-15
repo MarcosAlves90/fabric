@@ -1,6 +1,6 @@
 name: fabric
 version: 0.27.0
-description: Say "make me a <role> using <profile> as the base" and your Hermes agent builds a complete, working Bot — name, face, SOUL.md, memory, tools, skills, routines, Bot Chat and gateway — tested and rolled back on failure. Fresh creation requires an explicitly named existing base_profile; native Hermes cloning copies its config/model and Hermes-managed credentials.
+description: Say "make me a <role> using <profile> as the base" and your Hermes agent builds a complete, working Bot — name, face, SOUL.md, memory, tools, skills, routines, Bot Chat and gateway — tested and rolled back on failure. Fresh creation requires an explicitly named base_profile and sandbox choice (local host or an opt-in container backend); native Hermes cloning copies its config/model and Hermes-managed credentials.
 author: Bikash Joshi
 license: MIT
 homepage: https://github.com/MarcosAlves90/fabric

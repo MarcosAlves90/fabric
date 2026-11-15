@@ -27,7 +27,17 @@ class CreateAgentFailures(unittest.TestCase):
             with mock.patch.object(tools, "hermes_root", return_value=root), \
                  mock.patch.object(tools, "launch_profile", return_value="default"), \
                  mock.patch.object(tools.subprocess, "run", **patch):
-                return json.loads(tools.create_agent({"role": "writer", "base_profile": "default"}, settings={}))
+                return json.loads(tools.create_agent({"role": "writer", "base_profile": "default", "sandbox": "local"}, settings={}))
+
+    def test_missing_sandbox_is_rejected_before_subprocess(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_root(Path(tmp))
+            with mock.patch.object(tools, "hermes_root", return_value=root), \
+                 mock.patch.object(tools.subprocess, "run") as run:
+                run.return_value = subprocess.CompletedProcess([], 0, '{"ok": true}', "")
+                out = json.loads(tools.create_agent({"role": "writer", "base_profile": "default"}, settings={}))
+            self.assertFalse(out["ok"], "create_agent must reject a missing sandbox")
+            run.assert_not_called()
 
     def test_a_timeout_is_a_reason_not_a_traceback(self):
         out = self._run(side_effect=subprocess.TimeoutExpired(cmd="forge.py", timeout=900))
