@@ -115,6 +115,7 @@ assert "fabric-doctor" in ctx.cli, (
 # Skills are a promise too: whatever ships under skills/ should be offered.
 on_disk = sorted(c.name for c in (repo / "skills").iterdir()
                  if c.is_dir() and (c / "SKILL.md").exists())
+assert "fabric-teams" in on_disk, f"fabric-teams skill is missing from {on_disk}"
 assert sorted(ctx.skills) == on_disk, f"registered skills {sorted(ctx.skills)} != {on_disk}"
 
 # The companion ships inside every Bot and must register the same two hooks under the same load

@@ -8,7 +8,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from subprocess import CompletedProcess
+from subprocess import CompletedProcess, run
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -773,6 +773,26 @@ class AdvisoryGuidance(unittest.TestCase):
         self.assertNotIn("plus 2-4 specialists", text)
         self.assertIn("Only justified, authorized NEW profiles", text)
         self.assertIn("not security sandboxes", text)
+
+    def test_team_skill_is_shipped_and_referenced(self):
+        skill = ROOT / "skills" / "fabric-teams" / "SKILL.md"
+        self.assertTrue(skill.exists())
+        text = skill.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("---\nname: fabric-teams\n"))
+        self.assertIn("fabric:fabric-teams", schemas.CREATE_TEAM["description"])
+
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        unreleased = changelog.split("## [Unreleased]", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("fabric-teams", unreleased)
+        for section in ("## When to Use", "## Procedure", "## Pitfalls", "## Verification"):
+            self.assertIn(section, text)
+
+    def test_team_skill_is_registered(self):
+        probe = ROOT / "tests" / "registration_probe.py"
+        with tempfile.TemporaryDirectory() as home:
+            result = run([sys.executable, str(probe), str(ROOT), home], cwd=home,
+                         capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
