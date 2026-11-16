@@ -381,6 +381,118 @@ class Team(unittest.TestCase):
             self.assertIn("25", out["error"])
             forge_call.assert_not_called()
 
+    def test_team_naming_disambiguates_long_leads_reserves_lead_display(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            taken = set()
+            with (mock.patch.object(team.forge, "forge",
+                                    side_effect=self._team_forge_with_taken(taken)) as forge_call,
+                  mock.patch.object(team.forge, "existing_bot_names", return_value=taken)):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "Customer Experience",
+                                       "lead": {"display_name": "Quill", "role": "Lead",
+                                                "sandbox": "local"},
+                                       "members": [{"display_name": "Quill", "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(len(out["members"]), 2)
+        lead = next(member for member in out["members"] if member["name"] == out["lead"])
+        member = next(member for member in out["members"] if member["name"] != out["lead"])
+        self.assertNotEqual(lead["display_name"], member["display_name"])
+        for profile in (lead, member):
+            self.assertLessEqual(len(profile["display_name"]), 32, profile["display_name"])
+        self.assertNotEqual(lead["name"], member["name"])
+        self.assertEqual(forge_call.call_count, 2)
+
+    def test_team_naming_disambiguates_long_leads_across_teams(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            taken = set()
+            teams = (("Alexandra", "Quill", "Writer"),
+                     ("Alexander", "Atlas", "Researcher"))
+            with (mock.patch.object(team.forge, "forge",
+                                    side_effect=self._team_forge_with_taken(taken)),
+                  mock.patch.object(team.forge, "existing_bot_names", return_value=taken)):
+                results = [team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                            "team": "Customer Experience",
+                                            "lead": {"display_name": lead, "role": "Lead",
+                                                     "sandbox": "local"},
+                                            "members": [{"display_name": member, "role": role,
+                                                         "sandbox": "local"}]})
+                           for lead, member, role in teams]
+
+        self.assertEqual(sum(result["ok"] for result in results), 2)
+        self.assertTrue(all(result["ok"] for result in results), results)
+        leads = [next(member for member in result["members"] if member["name"] == result["lead"])
+                 for result in results]
+        display_names = [lead["display_name"] for lead in leads]
+        profile_ids = [lead["name"] for lead in leads]
+        self.assertEqual(len(display_names), len(set(display_names)))
+        for display_name in display_names:
+            self.assertLessEqual(len(display_name), 32, display_name)
+        self.assertEqual(len(profile_ids), len(set(profile_ids)))
+        for profile_id in profile_ids:
+            self.assertTrue(profile_id.isalnum() and profile_id.islower(), profile_id)
+            self.assertLessEqual(len(profile_id), 24, profile_id)
+
+    def test_team_naming_disambiguates_long_leads_no_fit_before_provisioning(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with (mock.patch.object(team.forge, "existing_bot_names",
+                                    return_value={("Team X " + "A" * n).lower()
+                                                  for n in range(1, 26)}),
+                  mock.patch.object(team.forge, "forge",
+                                    return_value={"ok": False, "error": "duplicate"}) as forge_call):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "X",
+                                       "lead": {"display_name": "A" * 25, "role": "Lead",
+                                                "sandbox": "local"},
+                                       "members": [{"display_name": "Quill", "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        self.assertFalse(out["ok"], out)
+        self.assertIn("unique", out["error"].lower())
+        forge_call.assert_not_called()
+
+    def test_team_naming_disambiguates_long_leads_short_label(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            taken = {"team x foo"}
+            with (mock.patch.object(team.forge, "forge",
+                                    side_effect=self._team_forge_with_taken(taken)) as forge_call,
+                  mock.patch.object(team.forge, "existing_bot_names", return_value=taken)):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "X",
+                                       "lead": {"display_name": "Foo", "role": "Lead",
+                                                "sandbox": "local"},
+                                       "members": [{"display_name": "Quill", "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        self.assertTrue(out["ok"], out)
+        lead = next(member for member in out["members"] if member["name"] == out["lead"])
+        self.assertNotEqual(lead["display_name"], "Team X Foo")
+        self.assertLessEqual(len(lead["display_name"]), 32, lead["display_name"])
+        self.assertEqual(forge_call.call_count, 2)
+
+    def test_team_naming_full_member_variants_before_shortening(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            member_name = "A" * 24
+            taken = {("Team Cu " + member_name).lower()}
+            with (mock.patch.object(team.forge, "forge",
+                                    side_effect=self._team_forge_with_taken(taken)),
+                  mock.patch.object(team.forge, "existing_bot_names", return_value=taken)):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "Customer Experience",
+                                       "members": [{"display_name": member_name, "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(out["members"][0]["display_name"], "Team C " + member_name)
+        self.assertEqual(len(out["members"][0]["display_name"]), 31)
+        self.assertLessEqual(len(out["members"][0]["display_name"]), 32)
+
     def test_team_naming_disambiguates_profile_ids_for_long_labels(self):
         for label in ("Customer Experience", "CustomerExperienceIT"):
             with self.subTest(label=label), tempfile.TemporaryDirectory() as t:
