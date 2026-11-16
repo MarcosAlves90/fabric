@@ -326,7 +326,7 @@ class Team(unittest.TestCase):
                 display, profile_id, error = forge.pick_name(spec.get("display_name"), taken)
             if error:
                 return {"ok": False, "error": error}
-            taken.add(profile_id)
+            taken.update({display.lower(), forge.slug(display), profile_id})
             return {"ok": True, "name": profile_id, "display_name": display}
         return create
 
@@ -365,6 +365,28 @@ class Team(unittest.TestCase):
             for profile_id in profile_ids:
                 self.assertTrue(profile_id.isalnum() and profile_id.islower(), profile_id)
                 self.assertLessEqual(len(profile_id), 24, profile_id)
+
+    def test_team_naming_preserves_member_names_when_label_is_long(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            taken = set()
+            with mock.patch.object(team.forge, "forge",
+                                   side_effect=self._team_forge_with_taken(taken)):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "CustomerExperienceIT", "members": [
+                                           {"display_name": "Alexandra", "role": "Writer", "sandbox": "local"},
+                                           {"display_name": "Alexander", "role": "Writer", "sandbox": "local"},
+                                       ]})
+
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(len(out["members"]), 2)
+        self.assertEqual([member["display_name"] for member in out["members"]],
+                         ["Team CustomerExperienc Alexandra", "Team CustomerExperienc Alexander"])
+        profile_ids = [member["name"] for member in out["members"]]
+        self.assertEqual(len(profile_ids), len(set(profile_ids)))
+        for profile_id in profile_ids:
+            self.assertTrue(profile_id.isalnum() and profile_id.islower(), profile_id)
+            self.assertLessEqual(len(profile_id), 24, profile_id)
 
     def test_team_naming_explicit_override_preserves_display_names_and_ids(self):
         with tempfile.TemporaryDirectory() as t:

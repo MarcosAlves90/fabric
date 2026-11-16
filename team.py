@@ -77,9 +77,17 @@ def build_team(s: dict) -> dict:
         if lead_spec:
             lead_spec = {**lead_spec, "display_name": f"Team {team} {lead_spec.get('display_name', '')}",
                          "_team_identity": forge._TEAM_IDENTITY_TOKEN}
-        members = [{**member, "display_name": f"Team {team} {member.get('display_name', '')}",
-                    "_team_identity": forge._TEAM_IDENTITY_TOKEN}
-                   for member in members]
+        team_component = forge.proper_case(team)
+        standardized = []
+        for member in members:
+            member_name = forge.proper_case(str(member.get("display_name", "")))
+            if len(member_name) > forge.MAX_DISPLAY_NAME - len("Team ") - 2:
+                return {"ok": False, "error": f"team member name '{member_name}' exceeds the "
+                        f"{forge.MAX_DISPLAY_NAME - len('Team ') - 2}-character limit for standardized names"}
+            team_name = team_component[:forge.MAX_DISPLAY_NAME - len("Team ") - len(member_name) - 1]
+            standardized.append({**member, "display_name": f"Team {team_name} {member_name}",
+                                 "_team_identity": forge._TEAM_IDENTITY_TOKEN})
+        members = standardized
     else:
         if lead_spec:
             lead_spec = {k: v for k, v in lead_spec.items() if k != "_team_identity"}

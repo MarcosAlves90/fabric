@@ -310,9 +310,12 @@ def provision_gateway(root: Path, profile_id: str, settings: dict) -> str:
 
 
 # ── names ────────────────────────────────────────────────────────────────────
+MAX_DISPLAY_NAME = 32
+
+
 def proper_case(name):
     words = re.sub(r"[^A-Za-z0-9 ]", " ", name).split()
-    return " ".join(w[:1].upper() + w[1:] for w in words)[:32]
+    return " ".join(w[:1].upper() + w[1:] for w in words)[:MAX_DISPLAY_NAME]
 
 
 def slug(name):
