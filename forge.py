@@ -42,6 +42,8 @@ if __package__:  # Hermes imports this as a package; the CLI entry points run it
 else:
     import policy as policy_mod
 
+_TEAM_IDENTITY_TOKEN = object()
+
 BASE_TOOLSETS = ["browser", "clarify", "file", "memory", "session_search", "skills", "todo", "web"]
 ALL_TOOLSETS = set(BASE_TOOLSETS) | {"code_execution", "computer_use", "connections", "cronjob", "delegation",
                                      "image_gen", "terminal", "tts", "vision"}
@@ -339,7 +341,7 @@ def existing_bot_names(root: Path) -> set:
     return names
 
 
-def pick_name(requested, taken):
+def pick_name(requested, taken, *, allow_team_suffix=False):
     """Return (display_name, profile_id, error). Bad or taken names are refused with free suggestions."""
     taken = taken | GENERIC_NAMES
     free = [n for n in COOL_NAMES if n.lower() not in taken]
@@ -349,7 +351,17 @@ def pick_name(requested, taken):
         sid = slug(display)
         if not sid or not display[:1].isalpha():
             return None, None, f"'{requested}' is not a usable name"
-        if display.lower() in taken or sid in taken:
+        if display.lower() in taken or (sid in taken and not allow_team_suffix):
+            return None, None, (f"name '{display}' is taken or too generic. Pick a different unique Proper Case "
+                                f"name, e.g. {', '.join(free[:4]) or 'something original'}")
+        if sid in taken:
+            for suffix in range(2, 10 ** 24):
+                digits = str(suffix)
+                if len(digits) >= 24:
+                    break
+                candidate = sid[:24 - len(digits)] + digits
+                if candidate not in taken:
+                    return display, candidate, None
             return None, None, (f"name '{display}' is taken or too generic. Pick a different unique Proper Case "
                                 f"name, e.g. {', '.join(free[:4]) or 'something original'}")
         return display, sid, None
@@ -862,7 +874,9 @@ def forge(s: dict) -> dict:
                           + (f": {guard['one_job']}" if guard.get("one_job") else "")
                           + ". Give this Bot a narrower job, update that one instead, or pass "
                             "allow_overlap: true if two really are wanted.")}
-    display, profile_id, err = pick_name(s.get("display_name") or s.get("name"), existing_bot_names(root))
+    display, profile_id, err = pick_name(
+        s.get("display_name") or s.get("name"), existing_bot_names(root),
+        allow_team_suffix=s.get("_team_identity") is _TEAM_IDENTITY_TOKEN)
     if err:
         return {"ok": False, "error": err, "rolled_back": False}
     s["display_name"] = display

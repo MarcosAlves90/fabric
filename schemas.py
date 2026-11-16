@@ -398,7 +398,11 @@ CREATE_TEAM = {
             "team": {"type": "string", "minLength": 1, "description": "required short team label, e.g. 'Content'"},
             "standardize_names": {"type": "boolean", "description": (
                 "defaults to true: prefix each new lead/member display name and profile ID with the team label. "
-                "Set false only when the user explicitly requests a different naming convention.")},
+                "Visible names stay unchanged. Use the existing slug/ID when unused; if a standardized team ID "
+                "collides, append the smallest available numeric suffix, trimming the slug prefix as needed to "
+                "stay within 24 lowercase alphanumeric characters. Custom names, reused leads, and standalone "
+                "create_agent IDs are unchanged. Set false only when the user explicitly requests another "
+                "naming convention.")},
             "base_profile": {"type": "string", "minLength": 1, "description": (
                 "one existing Hermes profile to clone in full, including credentials, for every newly built "
                 "lead/member. The user must name it; if they have not, ask rather than using the calling or "

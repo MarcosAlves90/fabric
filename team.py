@@ -75,9 +75,15 @@ def build_team(s: dict) -> dict:
     lead_spec = s.get("lead") if s.get("lead") else None
     if standardize_names:
         if lead_spec:
-            lead_spec = {**lead_spec, "display_name": f"Team {team} {lead_spec.get('display_name', '')}"}
-        members = [{**member, "display_name": f"Team {team} {member.get('display_name', '')}"}
+            lead_spec = {**lead_spec, "display_name": f"Team {team} {lead_spec.get('display_name', '')}",
+                         "_team_identity": forge._TEAM_IDENTITY_TOKEN}
+        members = [{**member, "display_name": f"Team {team} {member.get('display_name', '')}",
+                    "_team_identity": forge._TEAM_IDENTITY_TOKEN}
                    for member in members]
+    else:
+        if lead_spec:
+            lead_spec = {k: v for k, v in lead_spec.items() if k != "_team_identity"}
+        members = [{k: v for k, v in member.items() if k != "_team_identity"} for member in members]
     built, failed = [], []
 
     # 1. the lead — either a new Bot or one that already exists
