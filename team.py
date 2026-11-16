@@ -48,6 +48,12 @@ def _tell_lead(root: Path, lead_id: str, team: str, roster: list):
 
 
 def build_team(s: dict) -> dict:
+    standardize_names = s.get("standardize_names", True)
+    if not isinstance(standardize_names, bool):
+        return {"ok": False, "error": "standardize_names must be a boolean"}
+    team = s.get("team")
+    if standardize_names and (not isinstance(team, str) or not team.strip() or not forge.slug(team.strip())):
+        return {"ok": False, "error": "a non-empty safe team label is required when standardizing names"}
     root = Path(s.get("hermes_root") or forge.default_root())
     try:
         base_profile = s["base_profile"]
@@ -65,13 +71,60 @@ def build_team(s: dict) -> dict:
         if problem:
             return {"ok": False, "error": problem}
 
-    team = (s.get("team") or "").strip() or "the"
+    team = team.strip() if isinstance(team, str) and team.strip() else "the"
+    lead_spec = s.get("lead") if s.get("lead") else None
+    if standardize_names:
+        team_component = forge.proper_case(team)
+        standardized = []
+        taken_displays = set(forge.existing_bot_names(root))
+        if lead_spec:
+            lead_name = forge.proper_case(str(lead_spec.get("display_name", "")))
+            lead_display = None
+            for name_len in range(len(lead_name), 0, -1):
+                max_prefix_len = min(len(team_component), forge.MAX_DISPLAY_NAME - len("Team ") - name_len - 1)
+                for prefix_len in range(max_prefix_len, 0, -1):
+                    candidate = forge.proper_case(f"Team {team_component[:prefix_len]} {lead_name[:name_len]}")
+                    if candidate.lower() not in taken_displays:
+                        lead_display = candidate
+                        break
+                if lead_display:
+                    break
+            if not lead_display:
+                return {"ok": False, "error": f"no unique standardized display name fits for team lead '{lead_name}'"}
+            taken_displays.add(lead_display.lower())
+            lead_spec = {**lead_spec, "display_name": lead_display,
+                         "_team_identity": forge._TEAM_IDENTITY_TOKEN}
+        for member in members:
+            member_name = forge.proper_case(str(member.get("display_name", "")))
+            if len(member_name) > forge.MAX_DISPLAY_NAME - len("Team ") - 2:
+                return {"ok": False, "error": f"team member name '{member_name}' exceeds the "
+                        f"{forge.MAX_DISPLAY_NAME - len('Team ') - 2}-character limit for standardized names"}
+            display_name = None
+            for name_len in range(len(member_name), 0, -1):
+                max_prefix_len = min(len(team_component), forge.MAX_DISPLAY_NAME - len("Team ") - name_len - 1)
+                for prefix_len in range(max_prefix_len, 0, -1):
+                    candidate = forge.proper_case(f"Team {team_component[:prefix_len]} {member_name[:name_len]}")
+                    if candidate.lower() not in taken_displays:
+                        display_name = candidate
+                        break
+                if display_name:
+                    break
+            if display_name is None:
+                return {"ok": False, "error": f"no unique standardized display name fits for team member '{member_name}'"}
+            taken_displays.add(display_name.lower())
+            standardized.append({**member, "display_name": display_name,
+                                 "_team_identity": forge._TEAM_IDENTITY_TOKEN})
+        members = standardized
+    else:
+        if lead_spec:
+            lead_spec = {k: v for k, v in lead_spec.items() if k != "_team_identity"}
+        members = [{k: v for k, v in member.items() if k != "_team_identity"} for member in members]
     built, failed = [], []
 
     # 1. the lead — either a new Bot or one that already exists
     lead = None
-    if s.get("lead"):
-        result = _build(s["lead"], base)
+    if lead_spec:
+        result = _build(lead_spec, base)
         if not result.get("ok"):
             return {"ok": False, "error": f"the team lead could not be built: {result.get('error')}",
                     "rolled_back": result.get("rolled_back", False)}
