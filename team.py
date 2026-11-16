@@ -83,7 +83,7 @@ def build_team(s: dict) -> dict:
             for name_len in range(len(lead_name), 0, -1):
                 max_prefix_len = min(len(team_component), forge.MAX_DISPLAY_NAME - len("Team ") - name_len - 1)
                 for prefix_len in range(max_prefix_len, 0, -1):
-                    candidate = f"Team {team_component[:prefix_len]} {lead_name[:name_len]}"
+                    candidate = forge.proper_case(f"Team {team_component[:prefix_len]} {lead_name[:name_len]}")
                     if candidate.lower() not in taken_displays:
                         lead_display = candidate
                         break
@@ -103,7 +103,7 @@ def build_team(s: dict) -> dict:
             for name_len in range(len(member_name), 0, -1):
                 max_prefix_len = min(len(team_component), forge.MAX_DISPLAY_NAME - len("Team ") - name_len - 1)
                 for prefix_len in range(max_prefix_len, 0, -1):
-                    candidate = f"Team {team_component[:prefix_len]} {member_name[:name_len]}"
+                    candidate = forge.proper_case(f"Team {team_component[:prefix_len]} {member_name[:name_len]}")
                     if candidate.lower() not in taken_displays:
                         display_name = candidate
                         break

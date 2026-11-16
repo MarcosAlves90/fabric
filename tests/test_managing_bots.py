@@ -550,6 +550,42 @@ class Team(unittest.TestCase):
         self.assertEqual((out["members"][0]["display_name"], out["members"][0]["name"]),
                          ("Quill", "quill"))
 
+    def test_team_naming_canonicalizes_member_before_duplicate_check(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with (mock.patch.object(team.forge, "existing_bot_names",
+                                    return_value={"team x a b", "team x a"}),
+                  mock.patch.object(team.forge, "forge",
+                                    return_value={"ok": True, "name": "unexpected", "display_name": "Unexpected"}) as forge_call):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "X",
+                                       "lead": {"display_name": "Director", "role": "Lead",
+                                                "sandbox": "local"},
+                                       "members": [{"display_name": "A B", "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        forge_call.assert_not_called()
+        self.assertFalse(out["ok"], out)
+        self.assertIn("unique", out["error"].lower())
+
+    def test_team_naming_canonicalizes_lead_before_duplicate_check(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with (mock.patch.object(team.forge, "existing_bot_names",
+                                    return_value={"team x a b", "team x a"}),
+                  mock.patch.object(team.forge, "forge",
+                                    return_value={"ok": True, "name": "unexpected", "display_name": "Unexpected"}) as forge_call):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "X",
+                                       "lead": {"display_name": "A B", "role": "Lead",
+                                                "sandbox": "local"},
+                                       "members": [{"display_name": "Quill", "role": "Writer",
+                                                    "sandbox": "local"}]})
+
+        forge_call.assert_not_called()
+        self.assertFalse(out["ok"], out)
+        self.assertIn("unique", out["error"].lower())
+
     def test_team_needs_members(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))
