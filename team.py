@@ -48,6 +48,12 @@ def _tell_lead(root: Path, lead_id: str, team: str, roster: list):
 
 
 def build_team(s: dict) -> dict:
+    standardize_names = s.get("standardize_names", True)
+    if not isinstance(standardize_names, bool):
+        return {"ok": False, "error": "standardize_names must be a boolean"}
+    team = s.get("team")
+    if standardize_names and (not isinstance(team, str) or not team.strip() or not forge.slug(team.strip())):
+        return {"ok": False, "error": "a non-empty safe team label is required when standardizing names"}
     root = Path(s.get("hermes_root") or forge.default_root())
     try:
         base_profile = s["base_profile"]
@@ -65,13 +71,19 @@ def build_team(s: dict) -> dict:
         if problem:
             return {"ok": False, "error": problem}
 
-    team = (s.get("team") or "").strip() or "the"
+    team = team.strip() if isinstance(team, str) and team.strip() else "the"
+    lead_spec = s.get("lead") if s.get("lead") else None
+    if standardize_names:
+        if lead_spec:
+            lead_spec = {**lead_spec, "display_name": f"Team {team} {lead_spec.get('display_name', '')}"}
+        members = [{**member, "display_name": f"Team {team} {member.get('display_name', '')}"}
+                   for member in members]
     built, failed = [], []
 
     # 1. the lead — either a new Bot or one that already exists
     lead = None
-    if s.get("lead"):
-        result = _build(s["lead"], base)
+    if lead_spec:
+        result = _build(lead_spec, base)
         if not result.get("ok"):
             return {"ok": False, "error": f"the team lead could not be built: {result.get('error')}",
                     "rolled_back": result.get("rolled_back", False)}

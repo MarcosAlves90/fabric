@@ -31,9 +31,14 @@ class ModelToolBoundary(unittest.TestCase):
             forge.dump_yaml(profile / "config.yaml", {"model": {"default": "base", "provider": "p"}})
         return root
 
-    def test_create_tools_require_a_base_profile(self):
+    def test_create_tools_require_team_label_and_base_profile(self):
         self.assertIn("base_profile", schemas.CREATE_AGENT["parameters"]["required"])
-        self.assertIn("base_profile", schemas.CREATE_TEAM["parameters"]["required"])
+        team_parameters = schemas.CREATE_TEAM["parameters"]
+        self.assertIn("base_profile", team_parameters["required"])
+        self.assertIn("team", team_parameters["required"])
+        standardize_names = team_parameters["properties"]["standardize_names"]
+        self.assertEqual(standardize_names["type"], "boolean")
+        self.assertNotIn("default", standardize_names)
 
     def test_create_tools_require_explicit_sandbox_choices(self):
         agent = schemas.CREATE_AGENT["parameters"]
@@ -188,7 +193,7 @@ class ModelToolBoundary(unittest.TestCase):
         self.assertEqual(spec["base_profile"], "writer-base")
 
     def test_team_wrapper_forwards_each_route_without_inventing_a_default(self):
-        args = {"lead": {"model": {"default": "lead-model", "provider": "a"}, "sandbox": "local"},
+        args = {"team": "Content", "lead": {"model": {"default": "lead-model", "provider": "a"}, "sandbox": "local"},
                 "members": [{"model": {"default": "worker-model", "provider": "b"}, "sandbox": "docker"},
                             {"role": "Inherited", "sandbox": "local"}],
                 "base_profile": "team-base"}
@@ -206,7 +211,7 @@ class ModelToolBoundary(unittest.TestCase):
 
     def test_team_wrapper_forwards_one_top_level_base_profile(self):
         base_profile = "writer_profile_with_a_long_id_12345"
-        args = {"base_profile": base_profile, "members": [{"role": "Writer", "sandbox": "local"}]}
+        args = {"team": "Content", "base_profile": base_profile, "members": [{"role": "Writer", "sandbox": "local"}]}
         root = self._base_root(base_profile)
         with patch.object(tools, "hermes_root", return_value=root), \
                 patch.object(tools, "launch_profile", return_value="manager") as launch_profile, \
@@ -581,18 +586,18 @@ class ForgeModelIntegration(unittest.TestCase):
                         {"model": model, "terminal": {"backend": "docker", "timeout": 45}})
 
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
-                               "base_profile": "docker-base", "lead_name": "default",
+                               "base_profile": "docker-base", "team": "Engineering", "lead_name": "default",
                                "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
 
         self.assertTrue(out["ok"], out)
-        config = forge.load_yaml(self.root / "profiles" / "quill" / "config.yaml")
+        config = forge.load_yaml(self.root / "profiles" / "teamengineeringquill" / "config.yaml")
         self.assertNotIn("backend", config["terminal"])
 
     def test_team_applies_explicit_base_to_new_profiles_but_reuses_named_lead(self):
         base_model = {"default": "team-base-model", "provider": "team-base-provider"}
         self.add_profile("team-base", base_model)
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
-                               "launch_profile": "manager", "base_profile": "team-base",
+                               "launch_profile": "manager", "base_profile": "team-base", "team": "Content",
                                "lead": {"display_name": "Atlas", "role": "Lead", "sandbox": "local"},
                                "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"], out)
@@ -600,12 +605,13 @@ class ForgeModelIntegration(unittest.TestCase):
                    if call.args[1:3] == ("profile", "create")]
         self.assertEqual([call[call.index("--clone-from") + 1] for call in creates],
                          ["team-base", "team-base"])
-        self.assertEqual(self.at_inference, [("atlas", base_model), ("quill", base_model)])
+        self.assertEqual(self.at_inference, [("teamcontentatlas", base_model),
+                                             ("teamcontentquill", base_model)])
 
         self.run_mock.reset_mock()
         self.at_inference.clear()
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
-                               "base_profile": "team-base", "lead_name": "default",
+                               "base_profile": "team-base", "team": "Content", "lead_name": "default",
                                "members": [{"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}]})
         self.assertTrue(out["ok"], out)
         creates = [call.args[1:] for call in self.run_mock.call_args_list
@@ -613,7 +619,7 @@ class ForgeModelIntegration(unittest.TestCase):
         self.assertEqual(len(creates), 1)
         self.assertEqual(creates[0][creates[0].index("--clone-from") + 1], "team-base")
         self.assertEqual(out["lead"], "default")
-        self.assertEqual(self.at_inference, [("nova", base_model)])
+        self.assertEqual(self.at_inference, [("teamcontentnova", base_model)])
 
     def test_configured_fallback_remains_explicit_and_reported(self):
         route = {"default": "worker", "provider": "other"}
@@ -662,17 +668,19 @@ class ForgeModelIntegration(unittest.TestCase):
         lead = {"display_name": "Atlas", "role": "Lead", "sandbox": "local", "model": {"default": "lead", "provider": "a"}}
         worker = {"display_name": "Quill", "role": "Writer", "sandbox": "local", "model": {"default": "worker", "provider": "b"}}
         inherited = {"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}
-        out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
+        out = team.build_team({"hermes_root": str(self.root), "settings": self.settings, "team": "Content",
                                "base_profile": "manager", "lead": lead, "members": [worker, inherited]})
         self.assertTrue(out["ok"])
-        self.assertEqual(self.at_inference, [("atlas", lead["model"]), ("quill", worker["model"]),
-                                             ("nova", self.manager_model)])
+        self.assertEqual(self.at_inference, [("teamcontentatlas", lead["model"]),
+                                             ("teamcontentquill", worker["model"]),
+                                             ("teamcontentnova", self.manager_model)])
         self.assertEqual({m["name"]: m["gateway"] for m in out["members"]},
-                         {"atlas": "skipped", "quill": "skipped", "nova": "skipped"})
+                         {"teamcontentatlas": "skipped", "teamcontentquill": "skipped",
+                          "teamcontentnova": "skipped"})
 
     def test_existing_team_lead_is_reused_not_recreated(self):
         out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
-                               "base_profile": "manager", "lead_name": "default",
+                               "base_profile": "manager", "team": "Content", "lead_name": "default",
                                "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"])
         self.assertEqual(len(self.at_inference), 1)
@@ -682,7 +690,7 @@ class ForgeModelIntegration(unittest.TestCase):
         self.reply = (False, "401 unauthorized")
         with patch.object(forge, "provision_gateway", return_value="pending: no host verified"):
             out = team.build_team({"hermes_root": str(self.root), "settings": self.settings,
-                                   "base_profile": "manager",
+                                   "base_profile": "manager", "team": "Content",
                                    "members": [{"display_name": "Quill", "role": "Writer", "sandbox": "local"}]})
         self.assertTrue(out["ok"])
         self.assertTrue(out["members"][0]["gateway"].startswith("pending:"))
@@ -728,11 +736,13 @@ class SubprocessConstruction(unittest.TestCase):
     def test_team_member_models_survive_actual_team_subprocess(self):
         members = [{"display_name": "Quill", "role": "Writer", "sandbox": "local", "model": {"default": "writer", "provider": "w"}},
                    {"display_name": "Nova", "role": "Reviewer", "sandbox": "local"}]
-        out = json.loads(tools.create_team({"members": members, "base_profile": "default"}, settings=self.settings))
+        out = json.loads(tools.create_team({"team": "Content", "members": members,
+                                            "base_profile": "default"}, settings=self.settings))
         self.assertTrue(out["ok"], out)
         self.assertEqual([(m["name"], m["model"], m["gateway"]) for m in out["members"]],
-                         [("quill", "writer", "skipped"), ("nova", "parent", "skipped")])
-        self.assertEqual(forge.load_yaml(self.root / "profiles" / "quill" / "config.yaml")["model"],
+                         [("teamcontentquill", "writer", "skipped"),
+                          ("teamcontentnova", "parent", "skipped")])
+        self.assertEqual(forge.load_yaml(self.root / "profiles" / "teamcontentquill" / "config.yaml")["model"],
                          members[0]["model"])
 
 

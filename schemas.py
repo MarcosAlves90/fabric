@@ -379,6 +379,9 @@ CREATE_TEAM = {
         "reuse an existing Bot, a skill, temporary delegation or a routine when sufficient. "
         "A request for a team does not imply a new profile for every specialty or a fixed team size. "
         "Use lead_name for an existing lead; put only justified NEW profiles in members. "
+        "By default, pass each new lead/member's original, unprefixed display_name; create_team adds the team-label prefix automatically. "
+        "Never pre-prefix display_name (for team 'Content', pass 'Quill' to get 'Team Content Quill' / 'teamcontentquill'). "
+        "Set standardize_names=false only when the user explicitly requests a different naming convention. "
         "Explicit authorized profile creation stays direct. Apply skills 'fabric:fabric' and "
         "'fabric:fabric-teams'. "
         "Name one existing top-level base_profile for every newly built lead/member; if the user has not named one, "
@@ -392,7 +395,10 @@ CREATE_TEAM = {
     "parameters": {
         "type": "object",
         "properties": {
-            "team": {"type": "string", "description": "short team label, e.g. 'Content'"},
+            "team": {"type": "string", "minLength": 1, "description": "required short team label, e.g. 'Content'"},
+            "standardize_names": {"type": "boolean", "description": (
+                "defaults to true: prefix each new lead/member display name and profile ID with the team label. "
+                "Set false only when the user explicitly requests a different naming convention.")},
             "base_profile": {"type": "string", "minLength": 1, "description": (
                 "one existing Hermes profile to clone in full, including credentials, for every newly built "
                 "lead/member. The user must name it; if they have not, ask rather than using the calling or "
@@ -400,7 +406,14 @@ CREATE_TEAM = {
             "lead": {
     "type": "object",
     "properties": {
-        "display_name": {"type": "string"}, "role": {"type": "string"}, "one_job": {"type": "string"},
+        "display_name": {
+            "type": "string",
+            "description": (
+                "original, unprefixed display name; create_team adds the team-label prefix "
+                "automatically. Never pre-prefix."
+            ),
+        },
+        "role": {"type": "string"}, "one_job": {"type": "string"},
         "description": {"type": "string"}, "soul_md": {"type": "string"},
         "model": MODEL,
         "avatar_kind": {"type": "string", "enum": BLOB_KINDS},
@@ -428,7 +441,14 @@ CREATE_TEAM = {
             "members": {"type": "array", "maxItems": 6, "items": {
     "type": "object",
     "properties": {
-        "display_name": {"type": "string"}, "role": {"type": "string"}, "one_job": {"type": "string"},
+        "display_name": {
+            "type": "string",
+            "description": (
+                "original, unprefixed display name; create_team adds the team-label prefix "
+                "automatically. Never pre-prefix."
+            ),
+        },
+        "role": {"type": "string"}, "one_job": {"type": "string"},
         "description": {"type": "string"}, "soul_md": {"type": "string"},
         "model": MODEL,
         "avatar_kind": {"type": "string", "enum": BLOB_KINDS},
@@ -452,7 +472,7 @@ CREATE_TEAM = {
     "required": ["display_name", "role", "one_job", "soul_md", "toolsets", "sandbox"],
 }},
         },
-        "required": ["base_profile", "members"],
+        "required": ["team", "base_profile", "members"],
     },
 }
 

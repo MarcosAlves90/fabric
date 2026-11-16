@@ -312,6 +312,36 @@ class Teach(unittest.TestCase):
 
 
 class Team(unittest.TestCase):
+    def _team_forge(self, spec):
+        display, profile_id, error = forge.pick_name(spec.get("display_name"), set())
+        self.assertIsNone(error)
+        return {"ok": True, "name": profile_id, "display_name": display}
+
+    def test_team_naming_default_prefixes_display_name_and_derives_profile_id(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with mock.patch.object(team.forge, "forge", side_effect=self._team_forge):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "Research", "lead": {"display_name": "Atlas", "role": "Lead",
+                                       "sandbox": "local"}, "members": [{"display_name": "Quill", "role": "Writer",
+                                       "sandbox": "local"}]})
+        self.assertTrue(out["ok"], out)
+        self.assertEqual([(m["display_name"], m["name"]) for m in out["members"]],
+                         [("Team Research Atlas", "teamresearchatlas"),
+                          ("Team Research Quill", "teamresearchquill")])
+
+    def test_team_naming_explicit_override_preserves_display_names_and_ids(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with mock.patch.object(team.forge, "forge", side_effect=self._team_forge):
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "Research", "standardize_names": False,
+                                       "members": [{"display_name": "Quill", "role": "Writer",
+                                                    "sandbox": "local"}]})
+        self.assertTrue(out["ok"], out)
+        self.assertEqual((out["members"][0]["display_name"], out["members"][0]["name"]),
+                         ("Quill", "quill"))
+
     def test_team_needs_members(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))
@@ -323,7 +353,8 @@ class Team(unittest.TestCase):
     def test_unknown_lead_is_refused_before_building(self):
         with tempfile.TemporaryDirectory() as t:
             root = make_root(Path(t))
-            out = team.build_team({"hermes_root": str(root), "base_profile": "default", "lead_name": "nobody",
+            out = team.build_team({"hermes_root": str(root), "base_profile": "default", "team": "Content",
+                                   "lead_name": "nobody",
                                    "members": [{"display_name": "Quill", "role": "Writer", "one_job": "writes",
                                                 "soul_md": "# Quill\n", "toolsets": [], "sandbox": "local"}]})
             self.assertFalse(out["ok"])
