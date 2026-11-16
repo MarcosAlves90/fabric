@@ -343,6 +343,44 @@ class Team(unittest.TestCase):
                          [("Team Research Atlas", "teamresearchatlas"),
                           ("Team Research Quill", "teamresearchquill")])
 
+    def test_team_naming_disambiguates_cross_team_long_member_names(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            taken = set()
+            with mock.patch.object(team.forge, "forge",
+                                   side_effect=self._team_forge_with_taken(taken)), \
+                 mock.patch.object(team.forge, "existing_bot_names", return_value=taken):
+                results = [team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                            "team": name, "members": [
+                                                {"display_name": "CustomerSuccessSpecialist", "role": role,
+                                                 "sandbox": "local"}
+                                            ]})
+                           for name, role in (("Content", "Writer"), ("Customer", "Support"))]
+
+        self.assertEqual(sum(len(result["members"]) for result in results), 2)
+        self.assertTrue(all(result["ok"] for result in results), results)
+        members = [result["members"][0] for result in results]
+        display_names = [member["display_name"] for member in members]
+        profile_ids = [member["name"] for member in members]
+        self.assertEqual(len(display_names), len(set(display_names)))
+        for display_name in display_names:
+            self.assertLessEqual(len(display_name), 32, display_name)
+        self.assertEqual(len(profile_ids), len(set(profile_ids)))
+        for profile_id in profile_ids:
+            self.assertTrue(profile_id.isalnum() and profile_id.islower(), profile_id)
+            self.assertLessEqual(len(profile_id), 24, profile_id)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = make_root(Path(t))
+            with mock.patch.object(team.forge, "forge") as forge_call:
+                out = team.build_team({"hermes_root": str(root), "base_profile": "default",
+                                       "team": "Content", "members": [
+                                           {"display_name": "A" * 26, "role": "Writer", "sandbox": "local"}
+                                       ]})
+            self.assertFalse(out["ok"], out)
+            self.assertIn("25", out["error"])
+            forge_call.assert_not_called()
+
     def test_team_naming_disambiguates_profile_ids_for_long_labels(self):
         for label in ("Customer Experience", "CustomerExperienceIT"):
             with self.subTest(label=label), tempfile.TemporaryDirectory() as t:

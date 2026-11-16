@@ -398,10 +398,13 @@ CREATE_TEAM = {
             "team": {"type": "string", "minLength": 1, "description": "required short team label, e.g. 'Content'"},
             "standardize_names": {"type": "boolean", "description": (
                 "defaults to true: prefix each new lead/member display name and profile ID with the team label. "
-                "For new standardized members, normalized names up to 25 characters remain unchanged; shorten the team label "
-                "as needed to preserve the full name within forge's 32-character display-name limit. If a normalized "
-                "member name exceeds 25 characters, team creation rejects it before provisioning rather than truncating it. "
-                "Newly created lead naming behavior remains unchanged. "
+                "For new standardized members, normalized names up to 25 characters remain unchanged when the "
+                "resulting display name is unique. The team label is shortened as needed to fit forge's 32-character "
+                "display-name limit; if that shortened prefix collides with another team display name, expand the "
+                "team prefix and shorten the member portion only as needed to produce a unique name within 32 "
+                "characters. If no unique name fits, team creation fails before provisioning. A normalized member "
+                "name exceeding 25 characters is rejected before provisioning rather than truncated. Newly created "
+                "lead naming behavior remains unchanged. "
                 "Use the existing slug/ID when unused; if a standardized team ID "
                 "collides, append the smallest available numeric suffix, trimming the slug prefix as needed to "
                 "stay within 24 lowercase alphanumeric characters. Custom names, reused leads, and standalone "

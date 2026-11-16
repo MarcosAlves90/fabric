@@ -79,13 +79,26 @@ def build_team(s: dict) -> dict:
                          "_team_identity": forge._TEAM_IDENTITY_TOKEN}
         team_component = forge.proper_case(team)
         standardized = []
+        taken_displays = set(forge.existing_bot_names(root))
         for member in members:
             member_name = forge.proper_case(str(member.get("display_name", "")))
             if len(member_name) > forge.MAX_DISPLAY_NAME - len("Team ") - 2:
                 return {"ok": False, "error": f"team member name '{member_name}' exceeds the "
                         f"{forge.MAX_DISPLAY_NAME - len('Team ') - 2}-character limit for standardized names"}
-            team_name = team_component[:forge.MAX_DISPLAY_NAME - len("Team ") - len(member_name) - 1]
-            standardized.append({**member, "display_name": f"Team {team_name} {member_name}",
+            max_team_len = forge.MAX_DISPLAY_NAME - len("Team ") - len(member_name) - 1
+            display_name = None
+            max_prefix_len = min(len(team_component), forge.MAX_DISPLAY_NAME - len("Team ") - 2)
+            for prefix_len in range(min(max_prefix_len, max_team_len), max_prefix_len + 1):
+                team_name = team_component[:prefix_len]
+                member_len = min(len(member_name), forge.MAX_DISPLAY_NAME - len("Team ") - prefix_len - 1)
+                candidate = f"Team {team_name} {member_name[:member_len]}"
+                if candidate.lower() not in taken_displays:
+                    display_name = candidate
+                    break
+            if display_name is None:
+                return {"ok": False, "error": f"no unique standardized display name fits for team member '{member_name}'"}
+            taken_displays.add(display_name.lower())
+            standardized.append({**member, "display_name": display_name,
                                  "_team_identity": forge._TEAM_IDENTITY_TOKEN})
         members = standardized
     else:
